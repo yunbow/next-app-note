@@ -1,0 +1,250 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== Authentication ====================
+
+model User {
+  id            String    @id @default(cuid())
+  username      String?   @unique
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts        Account[]
+  sessions        Session[]
+  notes           Note[]
+  noteShares      NoteShare[]
+  noteVersions    NoteVersion[]
+  templates       Template[]
+  sentFollows     Follow[] @relation("SentFollows")
+  receivedFollows Follow[] @relation("ReceivedFollows")
+  subscription    Subscription?
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ==================== Notes ====================
+
+model Note {
+  id          String   @id @default(cuid())
+  title       String
+  content     String   // Markdown content
+  visibility  String   @default("private") // private, shared, public
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Author
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Relations
+  tags        NoteTag[]
+  categories  NoteCategory[]
+  versions    NoteVersion[]
+  shares      NoteShare[]
+  links       NoteLink[]       @relation("SourceNote")
+  linkedFrom  NoteLink[]       @relation("TargetNote")
+
+  @@index([authorId])
+  @@index([createdAt])
+  @@map("notes")
+}
+
+model NoteVersion {
+  id        String   @id @default(cuid())
+  content   String   // Markdown content snapshot
+  createdAt DateTime @default(now())
+
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([noteId, createdAt])
+  @@map("note_versions")
+}
+
+// ==================== Tags & Categories ====================
+
+model Tag {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+
+  notes     NoteTag[]
+
+  @@map("tags")
+}
+
+model NoteTag {
+  noteId String
+  tagId  String
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+  @@map("note_tags")
+}
+
+model Category {
+  id        String         @id @default(cuid())
+  name      String         @unique
+  createdAt DateTime       @default(now())
+
+  notes     NoteCategory[]
+
+  @@map("categories")
+}
+
+model NoteCategory {
+  noteId     String
+  categoryId String
+
+  note     Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, categoryId])
+  @@map("note_categories")
+}
+
+// ==================== Note Sharing ====================
+
+model NoteShare {
+  id         String   @id @default(cuid())
+  noteId     String
+  userId     String?  // null for public shares
+  permission String   // view, edit
+  password   String?  // hashed password for protected shares
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  note Note  @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
+  @@map("note_shares")
+}
+
+// ==================== Note Links ====================
+
+model NoteLink {
+  id           String   @id @default(cuid())
+  sourceNoteId String
+  targetNoteId String
+  createdAt    DateTime @default(now())
+
+  sourceNote Note @relation("SourceNote", fields: [sourceNoteId], references: [id], onDelete: Cascade)
+  targetNote Note @relation("TargetNote", fields: [targetNoteId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceNoteId, targetNoteId])
+  @@map("note_links")
+}
+
+// ==================== Templates ====================
+
+model Template {
+  id        String   @id @default(cuid())
+  name      String
+  content   String   // Markdown template content
+  type      String   // meeting, specification, etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("templates")
+}
+
+// ==================== Subscription ====================
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  stripePriceId        String?
+  plan                 String    @default("free") // free, basic, premium
+  status               String    @default("active") // active, canceled, past_due, trialing, incomplete
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ==================== Follow ====================
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("SentFollows",     fields: [followerId],  references: [id], onDelete: Cascade)
+  following User @relation("ReceivedFollows", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
