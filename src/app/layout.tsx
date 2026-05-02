@@ -1,10 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/common/Providers";
 import { CookieConsent } from "@/components/common/CookieConsent";
 import { AppShell } from "@/components/common/AppShell";
 import { getLocale, getTranslations } from "@/lib/i18n/server";
+import { env } from "@/lib/config/env";
+
+const APP_URL = env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+const SITE_NAME = "next-app-note";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,10 +31,33 @@ const notoSansJp = Noto_Sans_JP({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations();
   return {
-    title: t.metadata.siteTitle,
+    metadataBase: new URL(APP_URL),
+    title: { default: t.metadata.siteTitle, template: `%s | ${SITE_NAME}` },
     description: t.metadata.siteDescription,
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      url: APP_URL,
+    },
+    twitter: {
+      card: "summary_large_image",
+    },
+    alternates: { canonical: "/" },
+    robots: process.env.VERCEL_ENV === "production"
+      ? { index: true, follow: true }
+      : { index: false, follow: false },
+    icons: { icon: "/icon", apple: "/apple-icon" },
   };
 }
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+};
 
 export default async function RootLayout({
   children,
