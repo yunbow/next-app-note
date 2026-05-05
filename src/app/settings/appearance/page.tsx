@@ -32,7 +32,7 @@ export default function AppearanceSettingsPage() {
   const currentColorVisionLabel = mounted ? colorVisionLabels[colorVisionMode] : "...";
 
   return (
-    <div className="container max-w-2xl py-6">
+    <div className="max-w-2xl py-6">
       <BackLink href="/settings" label="設定に戻る" />
       <h1 className="text-2xl font-bold mb-6">{t("settings.appearance")}</h1>
       <Card>

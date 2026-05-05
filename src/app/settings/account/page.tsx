@@ -34,7 +34,7 @@ export default function AccountSettingsPage() {
   };
 
   return (
-    <div className="container max-w-2xl py-8">
+    <div className="max-w-2xl py-8">
       <BackLink href="/settings" label="設定に戻る" />
       <h1 className="text-2xl font-bold mb-6">アカウント設定</h1>
 

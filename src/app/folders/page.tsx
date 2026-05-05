@@ -15,7 +15,7 @@ export default async function FoldersPage() {
   const folders = result.success && result.data ? result.data : [];
 
   return (
-    <div className="container max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">フォルダ</h1>
         <p className="text-sm text-muted-foreground mt-1">

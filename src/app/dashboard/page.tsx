@@ -30,7 +30,7 @@ export default async function HomePage() {
   const displayName = session.user.name ?? session.user.email ?? "";
 
   return (
-    <div className="container max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">こんにちは、{displayName}さん</h1>

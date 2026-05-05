@@ -240,6 +240,8 @@ npm run db:seed:dev
 
 冪等なので何度実行しても重複しません。
 
+投入されるテストデータの詳細は「[開発用テストデータ](#開発用テストデータ)」を参照してください。
+
 ### 4. アプリ起動
 
 ```powershell
@@ -294,6 +296,46 @@ npm run db:seed:dev
 ```powershell
 docker ps --filter "name=next-app-" --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
 ```
+
+---
+
+## 開発用テストデータ
+
+`npm run db:seed:dev` で投入されるデータの一覧です。
+
+### 開発用ログインアカウント
+
+| ユーザー | メールアドレス | パスワード |
+| -------- | -------------- | ---------- |
+| Alice    | alice@example.com | `password123` |
+| Bob      | bob@example.com   | `password123` |
+
+### 投入されるコンテンツ
+
+| ユーザー | ノートタイトル | 公開設定 | タグ | カテゴリ |
+| -------- | -------------- | -------- | ---- | -------- |
+| Alice | Next.js App Router の基礎 | public | TypeScript, Next.js | 技術 |
+| Alice | Prisma ORM メモ | private | TypeScript, Prisma | 技術 |
+| Alice | 今日の日記 | private | メモ | 日記 |
+| Bob | React Hooks チートシート | public | TypeScript, React | 技術 |
+| Bob | アイデアメモ: ダークモード対応 | private | メモ, TODO | アイデア |
+| Bob | TypeScript Tips | shared | TypeScript | 技術 |
+
+### マスタデータ（prod/dev 共通）
+
+- **カテゴリ**: 技術 / 日記 / アイデア / プロジェクト
+- **タグ**: TypeScript / Next.js / React / Prisma / メモ / TODO
+
+### SEED スクリプト一覧
+
+| コマンド | SEED_MODE | 説明 |
+| -------- | --------- | ---- |
+| `npm run db:seed` | 自動判定 | `NODE_ENV=development` → dev、それ以外 → prod |
+| `npm run db:seed:dev` | dev | ユーザー・ノート・マスタデータを投入 |
+| `npm run db:seed:prod` | prod | マスタデータのみ投入 |
+| `npx prisma db seed` | 自動判定 | `NODE_ENV` で振り分け（上と同様） |
+
+> **安全装置**: `NODE_ENV=production` かつ `SEED_MODE=dev` の組み合わせは起動時エラーになります。本番環境への誤投入を防ぎます。
 
 ### トラブルシューティング
 

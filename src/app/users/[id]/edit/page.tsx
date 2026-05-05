@@ -19,7 +19,7 @@ export default async function UserProfileEditPage({ params }: { params: Promise<
   if (!user) notFound();
 
   return (
-    <div className="container max-w-2xl py-8">
+    <div className="max-w-2xl py-8">
       <BackLink href={`/users/${id}`} label="プロフィールに戻る" />
       <ProfileEditForm user={user} />
     </div>

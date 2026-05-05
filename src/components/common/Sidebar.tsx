@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import { ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { ChevronLeft, ChevronRight, LayoutDashboard, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,7 +17,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  HomeIcon,
   FileTextIcon,
   FolderIcon,
   TagIcon,
@@ -25,6 +24,7 @@ import {
   SettingsIcon,
 } from "./icons";
 import { useTranslations } from "@/lib/i18n";
+import { getMyFollowStats } from "@/features/follow/server/follow-actions";
 
 type NavItem = {
   labelKey: "dashboard" | "notes" | "folders" | "tags" | "profile" | "settings";
@@ -34,7 +34,7 @@ type NavItem = {
 };
 
 const getNavItems = (userId?: string): NavItem[] => [
-  { labelKey: "dashboard", href: "/dashboard", icon: <HomeIcon /> },
+  { labelKey: "dashboard", href: "/dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
   { labelKey: "notes", href: "/notes", icon: <FileTextIcon />, authRequired: true },
   { labelKey: "folders", href: "/folders", icon: <FolderIcon />, authRequired: true },
   { labelKey: "tags", href: "/tags", icon: <TagIcon />, authRequired: true },
@@ -45,9 +45,17 @@ const getNavItems = (userId?: string): NavItem[] => [
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [followStats, setFollowStats] = useState({ followers: 0, following: 0 });
   const pathname = usePathname();
   const { data: session } = useSession();
   const { t } = useTranslations();
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    getMyFollowStats().then((result) => {
+      if (result.success) setFollowStats(result.data);
+    });
+  }, [session?.user?.id]);
 
   const filteredNavItems = getNavItems(session?.user?.id).filter((item) => {
     if (item.authRequired && !session) {
@@ -126,7 +134,7 @@ export function Sidebar() {
 
         {/* User Info */}
         {session && (
-          <div className="p-4 border-t">
+          <div className="p-4 border-t space-y-2">
             <button
               onClick={() => setShowLogoutDialog(true)}
               className={cn(
@@ -135,7 +143,7 @@ export function Sidebar() {
               )}
               aria-label={t("accessibility.userMenu")}
             >
-              <Avatar className="h-8 w-8">
+              <Avatar className="h-8 w-8 shrink-0">
                 <AvatarFallback>{getUserInitial()}</AvatarFallback>
               </Avatar>
               {!isCollapsed && (
@@ -149,6 +157,20 @@ export function Sidebar() {
                 </div>
               )}
             </button>
+
+            {/* Follow stats */}
+            {!isCollapsed && (
+              <div className="flex gap-4 px-2">
+                <div className="text-xs">
+                  <span className="font-semibold">{followStats.followers}</span>
+                  <span className="text-muted-foreground ml-1">フォロワー</span>
+                </div>
+                <div className="text-xs">
+                  <span className="font-semibold">{followStats.following}</span>
+                  <span className="text-muted-foreground ml-1">フォロー中</span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </aside>

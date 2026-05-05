@@ -25,7 +25,7 @@ export default async function ProfileSettingsPage() {
   }
 
   return (
-    <div className="container max-w-2xl py-8">
+    <div className="max-w-2xl py-8">
       <BackLink href="/settings" label="設定に戻る" />
       <Card>
         <CardHeader>
