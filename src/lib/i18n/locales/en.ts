@@ -3,7 +3,8 @@ import type { Translations } from "./ja";
 export const en: Translations = {
   metadata: {
     siteTitle: "Note - Online Note Sharing",
-    siteDescription: "Real-time collaborative note-taking app with Markdown editor",
+    siteDescription:
+      "Real-time collaborative note-taking app with Markdown editor",
   },
 
   common: {
@@ -130,29 +131,71 @@ export const en: Translations = {
 
   landing: {
     hero: {
+      eyebrow: "Write in Markdown, connect ideas, share with the right people",
       title: "Organize Thoughts, Share Ideas",
       subtitle:
         "Efficient note management with Markdown editor and real-time collaboration",
       cta: "Get Started for Free",
+      secondaryCta: "Log in",
+      imageAlt:
+        "A product mockup showing the Note Markdown editor, note list, and sharing settings",
     },
     features: {
+      eyebrow: "Key features",
       title: "Key Features",
+      subtitle:
+        "Write, organize, connect, and share. Note keeps the full note workflow in one focused place.",
       markdown: {
         title: "Markdown Editor",
-        description: "Create beautifully formatted notes with intuitive Markdown editor",
-      },
-      realtime: {
-        title: "Real-time Editing",
-        description: "Collaborate seamlessly with simultaneous multi-user editing",
+        description:
+          "Capture headings, checklists, code blocks, and links without slowing down.",
       },
       organize: {
         title: "Organize & Manage",
-        description: "Organize notes with folders and tags, find what you need quickly",
+        description:
+          "Use folders and tags to keep information easy to browse and recover later.",
+      },
+      links: {
+        title: "Linked Notes",
+        description:
+          "Connect specs, meeting notes, and research so individual notes become usable knowledge.",
       },
       share: {
         title: "Share",
-        description: "Easily share notes and exchange ideas with team members",
+        description:
+          "Control access with public links, passwords, expiration, and collaboration settings.",
       },
+    },
+    proof: {
+      markdown: "Markdown ready",
+      links: "Linked notes",
+      sharing: "Sharing controls",
+    },
+    workflow: {
+      eyebrow: "A workflow that keeps notes from scattering",
+      title: "Move from quick thoughts to shared docs in one place",
+      subtitle:
+        "Draft privately, organize team notes, and publish only what is ready without moving context between tools.",
+      capture: {
+        title: "Start writing quickly",
+        description:
+          "Structure meeting notes, specs, and ideas in Markdown as soon as they appear.",
+      },
+      organize: {
+        title: "Stay oriented with tags and folders",
+        description:
+          "Classify by project, category, and related tags instead of relying on search alone.",
+      },
+      share: {
+        title: "Share at the right level",
+        description:
+          "Use collaboration, restricted sharing, and public links as your notes become useful to others.",
+      },
+    },
+    cta: {
+      title: "Build a lightweight note base that works for people and teams",
+      description:
+        "Create an account and try a shared Markdown note workspace today.",
     },
   },
 

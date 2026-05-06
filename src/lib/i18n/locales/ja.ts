@@ -99,17 +99,44 @@ export type Translations = {
   };
   landing: {
     hero: {
+      eyebrow: string;
       title: string;
       subtitle: string;
       cta: string;
+      secondaryCta: string;
+      imageAlt: string;
     };
     features: {
+      eyebrow: string;
       title: string;
+      subtitle: string;
       markdown: {
         title: string;
         description: string;
       };
-      realtime: {
+      organize: {
+        title: string;
+        description: string;
+      };
+      links: {
+        title: string;
+        description: string;
+      };
+      share: {
+        title: string;
+        description: string;
+      };
+    };
+    proof: {
+      markdown: string;
+      links: string;
+      sharing: string;
+    };
+    workflow: {
+      eyebrow: string;
+      title: string;
+      subtitle: string;
+      capture: {
         title: string;
         description: string;
       };
@@ -121,6 +148,10 @@ export type Translations = {
         title: string;
         description: string;
       };
+    };
+    cta: {
+      title: string;
+      description: string;
     };
   };
   cookieConsent: {
@@ -179,7 +210,8 @@ export type Translations = {
 export const ja: Translations = {
   metadata: {
     siteTitle: "Note - オンラインメモ共有",
-    siteDescription: "Markdownエディタを備えたリアルタイム編集対応のメモ共有アプリケーション",
+    siteDescription:
+      "Markdownエディタを備えたリアルタイム編集対応のメモ共有アプリケーション",
   },
 
   common: {
@@ -306,28 +338,70 @@ export const ja: Translations = {
 
   landing: {
     hero: {
+      eyebrow: "Markdownで書き、つなげて、必要な人へ共有",
       title: "思考を整理し、アイデアを共有",
       subtitle: "Markdownエディタとリアルタイム編集で、効率的なメモ管理を実現",
       cta: "無料で始める",
+      secondaryCta: "ログイン",
+      imageAlt:
+        "NoteのMarkdownエディタ、ノート一覧、共有設定を表示した画面イメージ",
     },
     features: {
+      eyebrow: "主な機能",
       title: "主な機能",
+      subtitle:
+        "書く、整理する、つなげる、共有する。メモ管理に必要な流れをひとつの場所にまとめます。",
       markdown: {
         title: "Markdownエディタ",
-        description: "直感的なMarkdownエディタで、美しく整形されたメモを作成",
-      },
-      realtime: {
-        title: "リアルタイム編集",
-        description: "複数人での同時編集に対応し、チームでの共同作業をスムーズに",
+        description:
+          "見出し、チェックリスト、コード、リンクを軽快に書ける編集体験。",
       },
       organize: {
         title: "整理・管理",
-        description: "フォルダやタグでメモを整理し、素早く目的のメモを見つけられます",
+        description:
+          "フォルダとタグで情報を分類し、後から見つけやすい状態を保てます。",
+      },
+      links: {
+        title: "ノート間リンク",
+        description:
+          "関連するメモをつなぎ、仕様、議事録、調査メモを知識として育てられます。",
       },
       share: {
         title: "共有",
-        description: "メモを簡単に共有し、チームメンバーとアイデアを交換",
+        description:
+          "公開範囲、パスワード、有効期限を使って、必要な相手にだけ届けられます。",
       },
+    },
+    proof: {
+      markdown: "Markdown対応",
+      links: "ノート間リンク",
+      sharing: "共有・公開設定",
+    },
+    workflow: {
+      eyebrow: "メモが散らからない流れ",
+      title: "思いつきから共有資料まで、同じ場所で進める",
+      subtitle:
+        "個人の下書き、チームの議事録、公開用メモを分断せず、状態に合わせて整理と共有を切り替えられます。",
+      capture: {
+        title: "すばやく書き始める",
+        description:
+          "Markdownで構造化しながら、会議メモや仕様メモをその場で残せます。",
+      },
+      organize: {
+        title: "タグとフォルダで見失わない",
+        description:
+          "プロジェクト、カテゴリ、関連タグで分類し、検索前提のメモ倉庫にしません。",
+      },
+      share: {
+        title: "必要な粒度で共有する",
+        description:
+          "共同編集、限定共有、公開リンクを使い分けて、メモをそのまま情報共有に使えます。",
+      },
+    },
+    cta: {
+      title: "チームにも個人にもなじむ、軽いノート基盤を作りましょう",
+      description:
+        "まずはアカウントを作成して、Markdownで書ける共有ノート環境を試してください。",
     },
   },
 
