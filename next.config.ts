@@ -1,5 +1,12 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
+// 開発環境ではローカル MinIO (http) からの画像を許可する
+const imgSrc = isDev
+  ? "img-src 'self' data: https: http://localhost:9002;"
+  : "img-src 'self' data: https:;";
+
 const nextConfig: NextConfig = {
   output: "standalone",
   turbopack: {
@@ -45,7 +52,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;",
+            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; ${imgSrc} font-src 'self' data:; connect-src 'self' https:;`,
           },
         ],
       },

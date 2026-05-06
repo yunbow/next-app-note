@@ -18,8 +18,6 @@ type Props = {
 
 function getImageUrl(src: string | null): string | undefined {
   if (!src) return undefined;
-  if (src.startsWith("data:") || src.startsWith("http")) return src;
-  if (src.startsWith("/uploads/")) return `/api/images${src.replace("/uploads/", "/")}`;
   return src;
 }
 

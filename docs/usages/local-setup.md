@@ -1,346 +1,260 @@
 # ローカル環境構築手順
 
-このドキュメントは本プロジェクト（Next.js + Prisma 製のメモアプリ）をローカルで開発するための手順をまとめたものです。
+Next.js + Prisma + PostgreSQL + MinIO 構成のメモアプリをローカルで動かすための手順です。
+
+---
 
 ## 前提条件
 
-以下のツールが事前にインストールされている必要があります。
+| ツール | 推奨バージョン | 備考 |
+| --- | --- | --- |
+| Node.js | 22.x | `Dockerfile` で `node:22-alpine` を使用 |
+| npm | 10.x 以上 | Node.js 22 同梱版で OK |
+| Docker Desktop | 最新版 | PostgreSQL / MinIO コンテナに使用 |
+| Git | 任意 | サブモジュールを含むため `--recursive` で clone |
 
-| ツール  | 推奨バージョン | 備考                                          |
-| ------- | -------------- | --------------------------------------------- |
-| Node.js | 22.x           | `Dockerfile` で `node:22-alpine` を使用       |
-| npm     | 10.x 以上      | Node.js 22 同梱版で OK                        |
-| Git     | 任意           | サブモジュールを含むため `--recursive` で clone |
+---
 
-OS は Windows / macOS / Linux いずれでも動作します。Windows では Git Bash もしくは WSL の利用を推奨します。
+## セットアップ
 
-## 1. リポジトリの取得
-
-サブモジュール（`docs/ai-dev-os` 等）を含むので `--recursive` を付けて clone します。
+### 1. リポジトリの取得
 
 ```bash
 git clone --recursive <repository-url>
 cd next-app-note
 ```
 
-すでに clone 済みの場合は次で取得できます。
+clone 済みでサブモジュールが空の場合:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-## 2. 依存関係のインストール
+### 2. 依存関係のインストール
 
 ```bash
 npm ci
 ```
 
-`postinstall` で `prisma generate` が自動実行され、Prisma Client が生成されます。
+`postinstall` で `prisma generate` が自動実行されます。
 
-## 3. 環境変数の設定
+### 3. Docker サービスの起動
 
-`.env.example` を `.env.local` にコピーして必要な値を埋めます。
-
-```bash
-cp .env.example .env.local
-```
-
-最低限ローカル開発で必要な変数は以下です。
-
-| キー              | ローカル設定例                          | 用途                              |
-| ----------------- | --------------------------------------- | --------------------------------- |
-| `NODE_ENV`        | `development`                           | 実行環境                          |
-| `DATABASE_URL`    | `file:./dev.db`                         | SQLite ファイル（Prisma）         |
-| `NEXTAUTH_SECRET` | `openssl rand -base64 32` で生成        | セッション暗号化キー              |
-| `NEXTAUTH_URL`    | `http://localhost:3000`                 | アプリのベース URL                |
-| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000`             | クライアント側で参照する URL      |
-
-OAuth / SMTP は使う機能のみ設定すれば OK です（未設定でもアプリ自体は起動します）。
-
-`NEXTAUTH_SECRET` の生成例:
+PostgreSQL と MinIO をバックグラウンドで起動します。
 
 ```bash
-openssl rand -base64 32
+docker compose up -d
 ```
 
-## 4. データベースの初期化
+起動確認:
 
-開発環境では SQLite (`prisma/dev.db`) を使います。マイグレーションを適用してスキーマを反映します。
+```bash
+docker compose ps
+```
+
+`STATUS` が `Up (healthy)` になるまで数秒待ちます。`minio-init` コンテナが自動で `app-note` バケットを作成します。
+
+| サービス | ホストポート | 用途 |
+| --- | --- | --- |
+| PostgreSQL | 54332 | アプリの DB |
+| MinIO S3 API | 9002 | 画像アップロード先 |
+| MinIO コンソール | 9003 | ストレージ管理 UI |
+
+### 4. 環境変数の設定
+
+```bash
+cp .env.example .env
+```
+
+**必須項目:**
+
+| キー | ローカル設定例 | 用途 |
+| --- | --- | --- |
+| `DATABASE_URL` | `postgresql://app:app@localhost:54332/app?schema=public` | DB 接続文字列 |
+| `AUTH_SECRET` | `openssl rand -base64 48` で生成 | セッション暗号化キー（32 文字以上） |
+| `AUTH_URL` | `http://localhost:3000` | アプリのベース URL |
+
+**ストレージ（R2 / MinIO）:**
+
+| キー | ローカル設定例 | 用途 |
+| --- | --- | --- |
+| `R2_ACCESS_KEY_ID` | `minioadmin` | MinIO ルートユーザー |
+| `R2_SECRET_ACCESS_KEY` | `minioadmin` | MinIO ルートパスワード |
+| `R2_BUCKET_NAME` | `app-note` | バケット名 |
+| `R2_ENDPOINT` | `http://localhost:9002` | MinIO エンドポイント |
+| `R2_PUBLIC_URL` | `http://localhost:9002/app-note` | 画像の公開 URL プレフィックス |
+
+OAuth / SMTP は使う機能のみ設定すれば OK です（未設定でも起動します）。
+
+`AUTH_SECRET` の生成:
+
+```bash
+openssl rand -base64 48
+```
+
+### 5. DB マイグレーション
 
 ```bash
 npm run db:migrate:dev
 ```
 
-スキーマだけ確認したい場合や、マイグレーションの状態を見るには次のコマンドが使えます。
-
-```bash
-npm run db:migrate:status
-```
-
-## 5. 開発サーバーの起動
+### 6. 開発サーバーの起動
 
 ```bash
 npm run dev
 ```
 
-起動後、ブラウザで [http://localhost:3000](http://localhost:3000) を開きます。
+[http://localhost:3000](http://localhost:3000) を開いて動作確認します。
 
-## 6. テストの実行
+---
 
-### ユニット / コンポーネントテスト（Vitest）
+## 主要コマンド
+
+### テスト
 
 ```bash
-# watch モード
+# ウォッチモード
 npm test
 
-# 1 回だけ実行
+# 1 回実行
 npm run test:run
 
 # カバレッジ
 npm run test:coverage
 ```
 
-対象は `src/**/*.{test,spec}.{ts,tsx}` です。
-
 ### E2E テスト（Playwright）
 
-初回のみブラウザのインストールが必要です。
+初回のみブラウザをインストール:
 
 ```bash
 npx playwright install
 ```
 
-実行は次のいずれかで行います。
+```bash
+npm run test:e2e          # ヘッドレス
+npm run test:e2e:ui       # UI モード
+npm run test:e2e:debug    # デバッグ
+```
+
+### Lint / Format
 
 ```bash
-# ヘッドレス実行
-npm run test:e2e
-
-# UI モード
-npm run test:e2e:ui
-
-# デバッグ実行
-npm run test:e2e:debug
+npm run lint              # ESLint
+npm run format            # Prettier（書き込み）
+npm run format:check      # Prettier（チェックのみ）
 ```
 
-`playwright.config.ts` の `webServer` 設定により、E2E 実行時は自動的に `npm run dev` が起動します。
-
-## 7. Lint / Format
+### DB 操作
 
 ```bash
-# ESLint
-npm run lint
-
-# Prettier（書き込み）
-npm run format
-
-# Prettier（チェックのみ）
-npm run format:check
+npm run db:migrate:dev    # マイグレーション適用（開発）
+npm run db:migrate:deploy # マイグレーション適用（本番 CI 用）
+npm run db:migrate:status # マイグレーション状態確認
+npm run db:seed:dev       # 開発用テストデータ投入
+npm run prisma:studio     # Prisma Studio を http://localhost:5555 で起動
 ```
 
-## 8. Docker での起動（任意）
-
-本番に近い構成で動かしたい場合は Dockerfile を使います。
+psql で直接操作:
 
 ```bash
-docker build -t next-app-note .
-docker run --rm -p 3000:3000 --env-file .env.local next-app-note
-```
-
-ヘルスチェックは `http://localhost:3000/api/health` に対して実行されます。
-
-## トラブルシューティング
-
-### `prisma generate` が失敗する
-
-`node_modules` が壊れている可能性があります。一度削除して再インストールしてください。
-
-```bash
-rm -rf node_modules
-npm ci
-```
-
-### Vitest で `expect is not defined` が出る
-
-`vitest.config.ts` の `test.globals` が `true` になっているか、`tsconfig.json` の `types` に `"vitest/globals"` が含まれているかを確認してください。
-
-### Playwright のテストが Vitest で実行されてしまう
-
-`vitest.config.ts` の `exclude` に `tests/e2e/**` が含まれているか確認してください。
-
-### ポート 3000 がすでに使われている
-
-別ポートで起動できます。
-
-```bash
-PORT=3100 npm run dev
-```
-
-その場合は `.env.local` の `NEXTAUTH_URL` / `NEXT_PUBLIC_APP_URL` も合わせて変更してください。
-
----
-
-## PostgreSQL 構築・運用手順
-
-このプロジェクトは独立した PostgreSQL コンテナを `docker-compose.yml` で持つ設計です。本プロジェクトの DB は **ホスト側ポート `54332`** で公開されます (他の `next-app-*` プロジェクトとは衝突しないよう個別に割り当て済み)。
-
-### 前提
-
-- **Docker Desktop** が起動していること (`docker version` が通る)
-- `.env` に `DATABASE_URL` が入っていること
-- `npm install` 完了
-
-### 1. PostgreSQL コンテナを起動
-
-プロジェクトのルートで:
-
-```powershell
-docker compose up -d
-```
-
-- `-d` でバックグラウンド起動
-- 初回はイメージ pull で 1〜2 分かかる
-- 2 回目以降は数秒で立ち上がる
-
-起動確認:
-
-```powershell
-docker compose ps
-```
-
-`STATUS` 列が `Up (healthy)` になっていれば OK (compose の healthcheck で `pg_isready` を見ている)。`(starting)` の間は接続失敗するので、healthy になるまで数秒待つ。
-
-### 2. マイグレーション適用
-
-スキーマを DB に反映 (初回 = テーブル作成、2 回目以降 = 差分適用):
-
-```powershell
-npm run db:migrate:dev
-```
-
-新しい migration を生成したいときは `--name` を渡す:
-
-```powershell
-npm run db:migrate:dev -- --name <name>
-```
-
-CI / 本番系では対話処理を伴わない deploy 系を使う:
-
-```powershell
-npm run db:migrate:deploy
-```
-
-### 3. SEED 投入 (任意)
-
-開発用テストデータを投入:
-
-```powershell
-npm run db:seed:dev
-```
-
-冪等なので何度実行しても重複しません。
-
-投入されるテストデータの詳細は「[開発用テストデータ](#開発用テストデータ)」を参照してください。
-
-### 4. アプリ起動
-
-```powershell
-npm run dev
-```
-
-`http://localhost:3000` にアクセスして動作確認。
-
-### 5. データ確認・操作
-
-GUI で中身を見たい場合:
-
-```powershell
-npm run prisma:studio
-```
-
-`http://localhost:5555` で Prisma Studio が開きます。
-
-CLI で直接 psql に入りたい場合:
-
-```powershell
 docker compose exec db psql -U app -d app
-```
-
-### ライフサイクル運用
-
-| 操作 | コマンド | 備考 |
-| --- | --- | --- |
-| 停止 (データ保持) | `docker compose stop` | 次回 `start` で即復帰 |
-| 再開 | `docker compose start` | |
-| 完全停止＋コンテナ削除 | `docker compose down` | ボリュームは残る |
-| **DB を完全リセット** | `docker compose down -v` | ⚠ 全データ消失 |
-| ログ追跡 | `docker compose logs -f db` | エラー調査時 |
-
-ハマったときの定番リセット手順:
-
-```powershell
-docker compose down -v
-docker compose up -d
-npm run db:migrate:dev
-npm run db:seed:dev
-```
-
-### 複数プロジェクトを同時に起動する場合
-
-`docker-compose.yml` の `name:` フィールドが各プロジェクトで異なるため、コンテナは独立して並走できます。ホスト側ポートも 54321〜54342 で固有割当なので衝突しません。
-
-すべて起動するとメモリ消費が積み上がるので、使わないものは `docker compose stop` しておくのが無難です。
-
-全プロジェクトの DB を一覧:
-
-```powershell
-docker ps --filter "name=next-app-" --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
 ```
 
 ---
 
 ## 開発用テストデータ
 
-`npm run db:seed:dev` で投入されるデータの一覧です。
+`npm run db:seed:dev` で以下のデータが投入されます。
 
-### 開発用ログインアカウント
+### ログインアカウント
 
 | ユーザー | メールアドレス | パスワード |
-| -------- | -------------- | ---------- |
-| Alice    | alice@example.com | `password123` |
-| Bob      | bob@example.com   | `password123` |
-
-### 投入されるコンテンツ
-
-| ユーザー | ノートタイトル | 公開設定 | タグ | カテゴリ |
-| -------- | -------------- | -------- | ---- | -------- |
-| Alice | Next.js App Router の基礎 | public | TypeScript, Next.js | 技術 |
-| Alice | Prisma ORM メモ | private | TypeScript, Prisma | 技術 |
-| Alice | 今日の日記 | private | メモ | 日記 |
-| Bob | React Hooks チートシート | public | TypeScript, React | 技術 |
-| Bob | アイデアメモ: ダークモード対応 | private | メモ, TODO | アイデア |
-| Bob | TypeScript Tips | shared | TypeScript | 技術 |
-
-### マスタデータ（prod/dev 共通）
-
-- **カテゴリ**: 技術 / 日記 / アイデア / プロジェクト
-- **タグ**: TypeScript / Next.js / React / Prisma / メモ / TODO
-
-### SEED スクリプト一覧
-
-| コマンド | SEED_MODE | 説明 |
-| -------- | --------- | ---- |
-| `npm run db:seed` | 自動判定 | `NODE_ENV=development` → dev、それ以外 → prod |
-| `npm run db:seed:dev` | dev | ユーザー・ノート・マスタデータを投入 |
-| `npm run db:seed:prod` | prod | マスタデータのみ投入 |
-| `npx prisma db seed` | 自動判定 | `NODE_ENV` で振り分け（上と同様） |
-
-> **安全装置**: `NODE_ENV=production` かつ `SEED_MODE=dev` の組み合わせは起動時エラーになります。本番環境への誤投入を防ぎます。
-
-### トラブルシューティング
-
-| 症状 | 原因 | 対処 |
 | --- | --- | --- |
-| `port is already allocated` | 該当ポートが他のサービスで使用中 | `docker compose down`、または `netstat -ano \| Select-String "54332"` で犯人を特定 |
-| `P1001: Can't reach database server` | コンテナがまだ healthy でない、もしくは `.env` の `DATABASE_URL` のポートと `docker-compose.yml` の publish ポートが不一致 | healthcheck 完了を待つ / `.env` を確認 |
-| マイグレーションが破綻 | dev 環境で発生する典型 | `docker compose down -v` で DB をリセットしてから `npm run db:migrate:dev` |
+| Alice | alice@example.com | `password123` |
+| Bob | bob@example.com | `password123` |
+
+### ノートデータ
+
+| ユーザー | タイトル | 公開設定 |
+| --- | --- | --- |
+| Alice | Next.js App Router の基礎 | public |
+| Alice | Prisma ORM メモ | private |
+| Alice | 今日の日記 | private |
+| Bob | React Hooks チートシート | public |
+| Bob | アイデアメモ: ダークモード対応 | private |
+| Bob | TypeScript Tips | shared |
+
+### SEED モード
+
+| コマンド | 内容 |
+| --- | --- |
+| `npm run db:seed:dev` | ユーザー・ノート・マスタデータを投入 |
+| `npm run db:seed:prod` | マスタデータ（カテゴリ・タグ）のみ投入 |
+
+> `NODE_ENV=production` かつ `SEED_MODE=dev` の組み合わせは起動時エラーになります（本番への誤投入防止）。
+
+---
+
+## Docker ライフサイクル
+
+| 操作 | コマンド | 備考 |
+| --- | --- | --- |
+| 起動 | `docker compose up -d` | |
+| 停止（データ保持） | `docker compose stop` | |
+| 再開 | `docker compose start` | |
+| 停止＋コンテナ削除 | `docker compose down` | ボリュームは残る |
+| **完全リセット** | `docker compose down -v` | ⚠ 全データ消失 |
+| ログ確認 | `docker compose logs -f` | |
+
+DB を完全リセットして再構築する場合:
+
+```bash
+docker compose down -v
+docker compose up -d
+npm run db:migrate:dev
+npm run db:seed:dev
+```
+
+### 複数プロジェクトの同時起動
+
+`docker-compose.yml` の `name:` フィールドとポートが各プロジェクト固有のため、そのまま並走できます。
+
+```bash
+docker ps --filter "name=next-app-" --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}"
+```
+
+---
+
+## トラブルシューティング
+
+### `prisma generate` が失敗する
+
+`node_modules` を削除して再インストールします。
+
+```bash
+rm -rf node_modules
+npm ci
+```
+
+### `P1001: Can't reach database server`
+
+- `docker compose ps` で DB コンテナが `healthy` になっているか確認
+- `.env` の `DATABASE_URL` のポートが `54332` になっているか確認
+
+### 画像アップロードが 503 になる
+
+R2 / MinIO の環境変数が未設定の場合に発生します。`.env` の `R2_*` 変数をすべて設定してください。MinIO が起動していない場合は `docker compose up -d` で起動します。
+
+### ポート競合
+
+```bash
+# 別ポートで起動
+PORT=3100 npm run dev
+```
+
+その場合は `.env` の `AUTH_URL` / `NEXT_PUBLIC_APP_URL` も合わせて変更してください。
+
+### Playwright のテストが Vitest で実行されてしまう
+
+`vitest.config.ts` の `exclude` に `tests/e2e/**` が含まれているか確認してください。
