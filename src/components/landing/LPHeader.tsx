@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/common/BrandLogo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,14 +25,14 @@ export function LPHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link
           href="/"
-          className="text-xl font-bold hover:opacity-80 transition-opacity"
+          className="transition-opacity hover:opacity-80"
           aria-label={t("accessibility.homeLink")}
         >
-          {t("common.appName")}
+          <BrandLogo label={t("common.appName")} className="text-xl" />
         </Link>
 
         <div className="flex items-center gap-2">
@@ -43,17 +44,27 @@ export function LPHeader() {
                 aria-label={t("accessibility.selectLanguage")}
               >
                 <Globe className="h-4 w-4" aria-hidden="true" />
-                <span>{t(`language.${locale}`)}</span>
+                <span className="hidden sm:inline">
+                  {t(`language.${locale}`)}
+                </span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setLocale("ja")}>
-                {locale === "ja" && <Check className="h-4 w-4 mr-2" aria-hidden="true" />}
-                <span className={locale !== "ja" ? "ml-6" : ""}>{t("language.ja")}</span>
+                {locale === "ja" && (
+                  <Check className="mr-2 h-4 w-4" aria-hidden="true" />
+                )}
+                <span className={locale !== "ja" ? "ml-6" : ""}>
+                  {t("language.ja")}
+                </span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setLocale("en")}>
-                {locale === "en" && <Check className="h-4 w-4 mr-2" aria-hidden="true" />}
-                <span className={locale !== "en" ? "ml-6" : ""}>{t("language.en")}</span>
+                {locale === "en" && (
+                  <Check className="mr-2 h-4 w-4" aria-hidden="true" />
+                )}
+                <span className={locale !== "en" ? "ml-6" : ""}>
+                  {t("language.en")}
+                </span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -73,7 +84,7 @@ export function LPHeader() {
                   ) : (
                     <Monitor className="h-4 w-4" aria-hidden="true" />
                   )}
-                  <span>
+                  <span className="hidden sm:inline">
                     {theme === "dark"
                       ? t("theme.dark")
                       : theme === "light"
@@ -84,18 +95,33 @@ export function LPHeader() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setTheme("light")}>
-                  {theme === "light" && <Check className="h-4 w-4 mr-2" aria-hidden="true" />}
-                  <Sun className={`h-4 w-4 ${theme !== "light" ? "ml-6" : ""}`} aria-hidden="true" />
+                  {theme === "light" && (
+                    <Check className="mr-2 h-4 w-4" aria-hidden="true" />
+                  )}
+                  <Sun
+                    className={`h-4 w-4 ${theme !== "light" ? "ml-6" : ""}`}
+                    aria-hidden="true"
+                  />
                   <span>{t("theme.light")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("dark")}>
-                  {theme === "dark" && <Check className="h-4 w-4 mr-2" aria-hidden="true" />}
-                  <Moon className={`h-4 w-4 ${theme !== "dark" ? "ml-6" : ""}`} aria-hidden="true" />
+                  {theme === "dark" && (
+                    <Check className="mr-2 h-4 w-4" aria-hidden="true" />
+                  )}
+                  <Moon
+                    className={`h-4 w-4 ${theme !== "dark" ? "ml-6" : ""}`}
+                    aria-hidden="true"
+                  />
                   <span>{t("theme.dark")}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTheme("system")}>
-                  {theme === "system" && <Check className="h-4 w-4 mr-2" aria-hidden="true" />}
-                  <Monitor className={`h-4 w-4 ${theme !== "system" ? "ml-6" : ""}`} aria-hidden="true" />
+                  {theme === "system" && (
+                    <Check className="mr-2 h-4 w-4" aria-hidden="true" />
+                  )}
+                  <Monitor
+                    className={`h-4 w-4 ${theme !== "system" ? "ml-6" : ""}`}
+                    aria-hidden="true"
+                  />
                   <span>{t("theme.system")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>

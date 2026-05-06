@@ -20,7 +20,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-
 const notoSansJp = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
   weight: ["400", "500", "700"],
@@ -43,10 +42,21 @@ export async function generateMetadata(): Promise<Metadata> {
       card: "summary_large_image",
     },
     alternates: { canonical: "/" },
-    robots: process.env.VERCEL_ENV === "production"
-      ? { index: true, follow: true }
-      : { index: false, follow: false },
-    icons: { icon: "/icon", apple: "/apple-icon" },
+    robots:
+      process.env.VERCEL_ENV === "production"
+        ? { index: true, follow: true }
+        : { index: false, follow: false },
+    icons: {
+      icon: [
+        { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+        {
+          url: "/brand/note-icon-192.png",
+          sizes: "192x192",
+          type: "image/png",
+        },
+      ],
+      apple: "/brand/apple-icon.png",
+    },
   };
 }
 

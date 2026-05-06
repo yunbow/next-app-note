@@ -157,6 +157,23 @@ export type Translations = {
     logoutConfirm: string;
     logoutDescription: string;
   };
+  profile: {
+    editProfile: string;
+    editTitle: string;
+    registeredAt: string;
+    email: string;
+    userId: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    userIdLabel: string;
+    userIdPlaceholder: string;
+    userIdHelp: string;
+    imageHelp: string;
+    imageUpdated: string;
+    updated: string;
+    saving: string;
+    save: string;
+  };
 };
 
 export const ja: Translations = {

@@ -8,7 +8,15 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
 
   // Public routes
-  const publicRoutes = ["/", "/login", "/register", "/about", "/terms", "/privacy", "/cookies"];
+  const publicRoutes = [
+    "/",
+    "/login",
+    "/register",
+    "/about",
+    "/terms",
+    "/privacy",
+    "/cookies",
+  ];
   const isPublicRoute = publicRoutes.some((route) => pathname === route);
 
   // Redirect logged-in users away from auth pages
@@ -22,12 +30,16 @@ export default auth((req) => {
   }
 
   const response = NextResponse.next({
-    request: { headers: new Headers([...req.headers, ["x-request-id", requestId]]) },
+    request: {
+      headers: new Headers([...req.headers, ["x-request-id", requestId]]),
+    },
   });
   response.headers.set("x-request-id", requestId);
   return response;
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!api|_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|manifest.webmanifest|brand/).*)",
+  ],
 };
