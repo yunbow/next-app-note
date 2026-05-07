@@ -25,7 +25,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:dev": "cross-env SEED_MODE=dev tsx prisma/seed.ts",
     "db:seed:prod": "cross-env SEED_MODE=prod tsx prisma/seed.ts",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "upload:static": "tsx --env-file=.env.local scripts/upload-static-images.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
