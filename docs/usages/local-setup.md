@@ -40,7 +40,7 @@ npm ci
 
 ### 3. Docker サービスの起動
 
-PostgreSQL と MinIO をバックグラウンドで起動します。
+PostgreSQL・MinIO・stripe-mock をバックグラウンドで起動します。
 
 ```bash
 docker compose up -d
@@ -59,6 +59,7 @@ docker compose ps
 | PostgreSQL | 54332 | アプリの DB |
 | MinIO S3 API | 9002 | 画像アップロード先 |
 | MinIO コンソール | 9003 | ストレージ管理 UI |
+| stripe-mock | 12111 | Stripe API モック |
 
 ### 4. 環境変数の設定
 
@@ -83,6 +84,19 @@ cp .env.example .env
 | `R2_BUCKET_NAME` | `app-note` | バケット名 |
 | `R2_ENDPOINT` | `http://localhost:9002` | MinIO エンドポイント |
 | `R2_PUBLIC_URL` | `http://localhost:9002/app-note` | 画像の公開 URL プレフィックス |
+
+**Stripe（stripe-mock）:**
+
+`.env.example` にモック用のデフォルト値が記載されています。`cp .env.example .env` 後はそのまま動作します。
+
+| キー | ローカル設定例 | 用途 |
+| --- | --- | --- |
+| `STRIPE_SECRET_KEY` | `sk_test_mock_local` | モック API キー（任意の `sk_test_*` 値で可） |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_mock_local_...` | ローカル用プレースホルダー |
+| `STRIPE_BASIC_PRICE_ID` | `price_mock_basic` | Basic プランの Price ID |
+| `STRIPE_PREMIUM_PRICE_ID` | `price_mock_premium` | Premium プランの Price ID |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_mock_local` | 公開キー（任意の `pk_test_*` 値で可） |
+| `STRIPE_MOCK_URL` | `http://localhost:12111` | stripe-mock エンドポイント（本番では削除） |
 
 OAuth / SMTP は使う機能のみ設定すれば OK です（未設定でも起動します）。
 
@@ -245,6 +259,29 @@ npm ci
 ### 画像アップロードが 503 になる
 
 R2 / MinIO の環境変数が未設定の場合に発生します。`.env` の `R2_*` 変数をすべて設定してください。MinIO が起動していない場合は `docker compose up -d` で起動します。
+
+### Stripe チェックアウトが動かない
+
+`STRIPE_MOCK_URL` が `.env` に設定されていることを確認してください。設定されていても動かない場合は stripe-mock コンテナが起動しているか確認します。
+
+```bash
+docker compose ps stripe-mock
+```
+
+### Webhook が処理されない（ローカル）
+
+stripe-mock は Webhook イベントを自動送信しません。ローカルで Webhook を手動テストするには [Stripe CLI](https://stripe.com/docs/stripe-cli) を使います。
+
+```bash
+# Stripe CLI インストール後
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+`stripe listen` を起動すると表示される `whsec_...` シークレットを `.env` の `STRIPE_WEBHOOK_SECRET` に設定してください。その後、別ターミナルでイベントをトリガーできます。
+
+```bash
+stripe trigger checkout.session.completed
+```
 
 ### ポート競合
 

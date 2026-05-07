@@ -19,7 +19,7 @@ import {
 } from "@/features/billing/server/subscription-actions";
 import { PLANS, type PlanType } from "@/lib/stripe/plans";
 import { toast } from "sonner";
-import { Check, CreditCard, Zap } from "lucide-react";
+import { Check, CreditCard, X, Zap } from "lucide-react";
 
 const PLAN_ORDER: PlanType[] = ["free", "basic", "premium"];
 
@@ -115,22 +115,36 @@ export function BillingContent() {
           return (
             <Card
               key={planKey}
-              className={isCurrent ? "border-primary ring-1 ring-primary" : ""}
+              className={
+                isCurrent
+                  ? "border-primary ring-1 ring-primary"
+                  : planKey === "premium"
+                    ? "border-amber-200 dark:border-amber-800"
+                    : ""
+              }
             >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>
-                    <CardTitle className="text-lg flex items-center gap-2">
+                    <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
                       {planKey === "premium" && (
                         <Zap className="h-4 w-4 text-amber-500" />
                       )}
                       {plan.name}
                       {isCurrent && (
-                        <span className="ml-1 text-xs font-normal text-primary">
+                        <span className="text-xs font-normal text-primary">
                           現在のプラン
                         </span>
                       )}
+                      {planKey === "premium" && !isCurrent && (
+                        <span className="text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full">
+                          おすすめ
+                        </span>
+                      )}
                     </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {plan.description}
+                    </p>
                     <CardDescription className="mt-1">
                       {plan.price === 0 ? (
                         "無料"
@@ -144,7 +158,7 @@ export function BillingContent() {
                       )}
                     </CardDescription>
                   </div>
-                  <div>
+                  <div className="shrink-0 ml-4">
                     {isCurrent ? (
                       plan.price > 0 && subscription?.stripeCustomerId ? (
                         <Button
@@ -173,6 +187,11 @@ export function BillingContent() {
                         size="sm"
                         onClick={() => handleUpgrade(planKey)}
                         disabled={actionLoading !== null || loading}
+                        className={
+                          planKey === "premium"
+                            ? "bg-amber-500 hover:bg-amber-600 text-white"
+                            : ""
+                        }
                       >
                         {actionLoading === planKey
                           ? "処理中..."
@@ -183,7 +202,7 @@ export function BillingContent() {
                 </div>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-1">
+                <ul className="space-y-1.5">
                   {plan.features.map((feature) => (
                     <li
                       key={feature}
@@ -191,6 +210,15 @@ export function BillingContent() {
                     >
                       <Check className="h-4 w-4 text-green-500 shrink-0" />
                       {feature}
+                    </li>
+                  ))}
+                  {plan.limitations.map((limitation) => (
+                    <li
+                      key={limitation}
+                      className="flex items-center gap-2 text-sm text-muted-foreground"
+                    >
+                      <X className="h-4 w-4 shrink-0" />
+                      {limitation}
                     </li>
                   ))}
                 </ul>

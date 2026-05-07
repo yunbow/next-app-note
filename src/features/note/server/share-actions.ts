@@ -10,6 +10,7 @@ import {
   CreateNoteShareSchema,
   type CreateNoteShareInput,
 } from "../schema/note-schema";
+import { getUserPlan, getPlanLimits } from "@/lib/stripe/feature-gate";
 
 function logSecurityEvent(event: string, details: Record<string, unknown>) {
   logger.warn({ event, ...details }, "Security event");
@@ -52,6 +53,19 @@ export async function createNoteShare(
         ownerId: note.authorId,
       });
       return { success: false, error: "このノートを共有する権限がありません" };
+    }
+
+    const plan = await getUserPlan(session.user.id);
+    const limits = getPlanLimits(plan);
+
+    if (validated.password && !limits.sharePassword) {
+      return { success: false, error: "パスワード保護はBasicプラン以上で利用できます" };
+    }
+    if (validated.expiresAt && !limits.shareExpiry) {
+      return { success: false, error: "有効期限の設定はPremiumプランで利用できます" };
+    }
+    if (validated.permission === "edit" && !limits.shareEditPermission) {
+      return { success: false, error: "編集権限付きの共有はPremiumプランで利用できます" };
     }
 
     // Hash password if provided

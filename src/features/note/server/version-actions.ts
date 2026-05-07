@@ -9,6 +9,7 @@ import {
   CreateNoteVersionSchema,
   type CreateNoteVersionInput,
 } from "../schema/note-schema";
+import { getUserPlan, getPlanLimits } from "@/lib/stripe/feature-gate";
 
 function logSecurityEvent(event: string, details: Record<string, unknown>) {
   logger.warn({ event, ...details }, "Security event");
@@ -34,6 +35,12 @@ export async function createNoteVersion(
     }
 
     const validated = CreateNoteVersionSchema.parse(input);
+
+    const plan = await getUserPlan(session.user.id);
+    const limits = getPlanLimits(plan);
+    if (limits.versionHistoryDays === 0) {
+      return { success: false, error: "バージョン管理はBasicプラン以上で利用できます" };
+    }
 
     // Check note ownership
     const note = await prisma.note.findUnique({
@@ -90,8 +97,26 @@ export async function getNoteVersions(noteId: string) {
       return [];
     }
 
+    const plan = await getUserPlan(session.user.id);
+    const limits = getPlanLimits(plan);
+
+    if (limits.versionHistoryDays === 0) {
+      return [];
+    }
+
+    const dateFilter =
+      limits.versionHistoryDays !== null
+        ? {
+            createdAt: {
+              gte: new Date(
+                Date.now() - limits.versionHistoryDays * 24 * 60 * 60 * 1000,
+              ),
+            },
+          }
+        : {};
+
     const versions = await prisma.noteVersion.findMany({
-      where: { noteId },
+      where: { noteId, ...dateFilter },
       include: {
         user: {
           select: {
@@ -133,6 +158,12 @@ export async function restoreNoteVersion(
 
     if (!version) {
       return { success: false, error: "バージョンが見つかりません" };
+    }
+
+    const plan = await getUserPlan(session.user.id);
+    const limits = getPlanLimits(plan);
+    if (limits.versionHistoryDays === 0) {
+      return { success: false, error: "バージョン管理はBasicプラン以上で利用できます" };
     }
 
     // IDOR 対策: ノート所有者のみ復元可能

@@ -26,6 +26,7 @@ import {
 } from "@/lib/errors";
 import { verifyNoteOwnership } from "@/lib/security/resource-ownership";
 import { createLogger, logError, logSuccess } from "@/lib/logger/index";
+import { getUserPlan, getPlanLimits } from "@/lib/stripe/feature-gate";
 
 const logger = createLogger("note-actions");
 
@@ -49,6 +50,18 @@ export async function createNote(
     }
 
     const validated = createNoteSchema.parse(input);
+
+    const plan = await getUserPlan(session.user.id);
+    const limits = getPlanLimits(plan);
+    if (limits.maxNotes !== null) {
+      const count = await prisma.note.count({ where: { authorId: session.user.id } });
+      if (count >= limits.maxNotes) {
+        return {
+          success: false,
+          error: `Freeプランではノートは最大${limits.maxNotes}件まで作成できます。Basicプラン以上にアップグレードすると無制限になります`,
+        };
+      }
+    }
 
     const note = await prisma.note.create({
       data: {
@@ -377,6 +390,19 @@ export async function shareNote(input: ShareNoteInput): Promise<ActionResult> {
     // IDOR対策: 権限チェック
     await verifyNoteOwnership(validated.noteId, session.user.id);
 
+    const plan = await getUserPlan(session.user.id);
+    const limits = getPlanLimits(plan);
+
+    if (validated.password && !limits.sharePassword) {
+      return { success: false, error: "パスワード保護はBasicプラン以上で利用できます" };
+    }
+    if (validated.expiresAt && !limits.shareExpiry) {
+      return { success: false, error: "有効期限の設定はPremiumプランで利用できます" };
+    }
+    if (validated.permission === "edit" && !limits.shareEditPermission) {
+      return { success: false, error: "編集権限付きの共有はPremiumプランで利用できます" };
+    }
+
     const shareData: any = {
       noteId: validated.noteId,
       permission: validated.permission,
@@ -429,6 +455,21 @@ export async function createTemplate(
     }
 
     const validated = createTemplateSchema.parse(input);
+
+    const plan = await getUserPlan(session.user.id);
+    const limits = getPlanLimits(plan);
+    if (limits.maxTemplates === 0) {
+      return { success: false, error: "テンプレートはBasicプラン以上で利用できます" };
+    }
+    if (limits.maxTemplates !== null) {
+      const count = await prisma.template.count({ where: { userId: session.user.id } });
+      if (count >= limits.maxTemplates) {
+        return {
+          success: false,
+          error: `現在のプランではテンプレートは最大${limits.maxTemplates}件まで作成できます。Premiumプランで無制限になります`,
+        };
+      }
+    }
 
     const template = await prisma.template.create({
       data: {

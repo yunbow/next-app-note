@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import type { ActionResult } from "@/lib/types/action-result";
 import { CreateNoteLinkSchema, type CreateNoteLinkInput } from "../schema/note-schema";
+import { getUserPlan, getPlanLimits } from "@/lib/stripe/feature-gate";
 
 function logSecurityEvent(event: string, details: Record<string, unknown>) {
   logger.warn({ event, ...details }, "Security event");
@@ -41,6 +42,12 @@ export async function createNoteLink(
     }
 
     const validated = CreateNoteLinkSchema.parse(input);
+
+    const plan = await getUserPlan(session.user.id);
+    const limits = getPlanLimits(plan);
+    if (!limits.noteLinks) {
+      return { success: false, error: "ノート間リンクはPremiumプランで利用できます" };
+    }
 
     if (validated.sourceNoteId === validated.targetNoteId) {
       return { success: false, error: "同じノートにリンクできません" };
