@@ -1,12 +1,5 @@
 import type { NextConfig } from "next";
 
-const isDev = process.env.NODE_ENV !== "production";
-
-// 開発環境ではローカル MinIO (http) からの画像を許可する
-const imgSrc = isDev
-  ? "img-src 'self' data: https: http://localhost:9002;"
-  : "img-src 'self' data: https:;";
-
 const nextConfig: NextConfig = {
   output: "standalone",
   turbopack: {
@@ -26,34 +19,17 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    // CSP with nonce is set per-request in src/middleware.ts (security.md §3.4).
+    // Static security headers that don't need per-request values are set here.
     return [
       {
         source: "/:path*",
         headers: [
-          {
-            key: "X-Frame-Options",
-            value: "DENY",
-          },
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
-          },
-          {
-            key: "X-XSS-Protection",
-            value: "1; mode=block",
-          },
-          {
-            key: "Content-Security-Policy",
-            value: `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; ${imgSrc} font-src 'self' data:; connect-src 'self' https:;`,
-          },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
         ],
       },
     ];

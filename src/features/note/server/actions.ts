@@ -24,7 +24,7 @@ import {
   isAppError,
   getErrorMessage,
 } from "@/lib/errors";
-import { verifyNoteOwnership } from "@/lib/security/resource-ownership";
+import { verifyNoteOwnership } from "@/features/note/services/ownership";
 import { createLogger, logError, logSuccess } from "@/lib/logger/index";
 import { getUserPlan, getPlanLimits } from "@/lib/stripe/feature-gate";
 

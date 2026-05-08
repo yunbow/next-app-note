@@ -1,24 +1,9 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { z } from "zod";
-
-const registerSchema = z.object({
-  name: z
-    .string()
-    .min(1, "ユーザー名は必須です")
-    .max(50, "ユーザー名は50文字以内で入力してください"),
-  email: z.string().email("有効なメールアドレスを入力してください"),
-  password: z
-    .string()
-    .min(8, "パスワードは8文字以上である必要があります")
-    .regex(/[A-Za-z]/, "パスワードには英字を含める必要があります")
-    .regex(/[0-9]/, "パスワードには数字を含める必要があります"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "パスワードが一致しません",
-  path: ["confirmPassword"],
-});
+import { registerSchema } from "@/features/auth/schema/register-schema";
+import { checkRateLimit, RATE_LIMIT_PRESETS } from "@/lib/api/rate-limit";
 
 function generateUsername(): string {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
@@ -40,6 +25,15 @@ async function generateUniqueUsername(): Promise<string> {
 
 export async function POST(request: Request) {
   try {
+    const ip = (await headers()).get("x-forwarded-for") ?? "unknown";
+    const { success: rateLimitOk } = checkRateLimit(`auth:register:${ip}`, RATE_LIMIT_PRESETS.auth);
+    if (!rateLimitOk) {
+      return NextResponse.json(
+        { success: false, error: { message: "リクエストが多すぎます。しばらくしてから再試行してください。" } },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const validated = registerSchema.safeParse(body);
 

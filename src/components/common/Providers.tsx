@@ -11,13 +11,15 @@ import { ColorVisionProvider } from "@/lib/color-vision";
 export function Providers({
   children,
   locale,
+  nonce,
 }: {
   children: React.ReactNode;
   locale?: Locale;
+  nonce?: string;
 }) {
   return (
     <SessionProvider>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
         <LocaleProvider initialLocale={locale}>
           <FontSizeProvider>
             <ColorVisionProvider>

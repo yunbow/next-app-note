@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,29 +17,27 @@ import {
 import Link from "next/link";
 import { useTranslations } from "@/lib/i18n";
 import { toast } from "sonner";
+import { registerSchema, type RegisterInput } from "../schema/register-schema";
 
 export function RegisterForm() {
   const { t } = useTranslations();
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+  });
 
-    const formData = new FormData(e.currentTarget);
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    const confirmPassword = formData.get("confirmPassword") as string;
-
+  const onSubmit = async (data: RegisterInput) => {
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, confirmPassword }),
+        body: JSON.stringify(data),
       });
 
       const result = await response.json();
@@ -47,12 +46,10 @@ export function RegisterForm() {
         toast.success("登録が完了しました。ログインしてください。");
         router.push("/login");
       } else {
-        setError(result.error?.message || t("registration.failed"));
+        setError("root", { message: result.error?.message || t("registration.failed") });
       }
     } catch {
-      setError(t("registration.failed"));
-    } finally {
-      setIsLoading(false);
+      setError("root", { message: t("registration.failed") });
     }
   };
 
@@ -63,99 +60,107 @@ export function RegisterForm() {
         <CardDescription>{t("registration.description")}</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {errors.root && (
             <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
-              {error}
+              {errors.root.message}
             </div>
           )}
 
           <div className="space-y-2">
             <Label htmlFor="name">
               ユーザー名
-              <span
-                className="text-destructive ml-0.5"
-                aria-label={t("accessibility.required")}
-              >
+              <span className="text-destructive ml-0.5" aria-label={t("accessibility.required")}>
                 *
               </span>
             </Label>
             <Input
               id="name"
-              name="name"
               type="text"
               placeholder="表示名を入力してください"
-              required
-              disabled={isLoading}
+              disabled={isSubmitting}
               aria-required="true"
+              aria-describedby={errors.name ? "name-error" : undefined}
+              {...register("name")}
             />
+            {errors.name && (
+              <p id="name-error" className="text-sm text-destructive">
+                {errors.name.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="email">
               {t("login.email")}
-              <span
-                className="text-destructive ml-0.5"
-                aria-label={t("accessibility.required")}
-              >
+              <span className="text-destructive ml-0.5" aria-label={t("accessibility.required")}>
                 *
               </span>
             </Label>
             <Input
               id="email"
-              name="email"
               type="email"
               placeholder={t("login.emailPlaceholder")}
-              required
-              disabled={isLoading}
+              disabled={isSubmitting}
               aria-required="true"
+              aria-describedby={errors.email ? "email-error" : undefined}
+              {...register("email")}
             />
+            {errors.email && (
+              <p id="email-error" className="text-sm text-destructive">
+                {errors.email.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="password">
               パスワード
-              <span
-                className="text-destructive ml-0.5"
-                aria-label={t("accessibility.required")}
-              >
+              <span className="text-destructive ml-0.5" aria-label={t("accessibility.required")}>
                 *
               </span>
             </Label>
             <Input
               id="password"
-              name="password"
               type="password"
               placeholder="8文字以上、英字と数字を含む"
-              required
-              disabled={isLoading}
+              disabled={isSubmitting}
               aria-required="true"
+              aria-describedby={errors.password ? "password-error" : undefined}
+              {...register("password")}
             />
+            {errors.password && (
+              <p id="password-error" className="text-sm text-destructive">
+                {errors.password.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">
               パスワード（確認）
-              <span
-                className="text-destructive ml-0.5"
-                aria-label={t("accessibility.required")}
-              >
+              <span className="text-destructive ml-0.5" aria-label={t("accessibility.required")}>
                 *
               </span>
             </Label>
             <Input
               id="confirmPassword"
-              name="confirmPassword"
               type="password"
               placeholder="パスワードを再入力"
-              required
-              disabled={isLoading}
+              disabled={isSubmitting}
               aria-required="true"
+              aria-describedby={errors.confirmPassword ? "confirmPassword-error" : undefined}
+              {...register("confirmPassword")}
             />
+            {errors.confirmPassword && (
+              <p id="confirmPassword-error" className="text-sm text-destructive">
+                {errors.confirmPassword.message}
+              </p>
+            )}
           </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "登録中..." : "登録"}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "登録中..." : "登録"}
           </Button>
 
           <p className="text-xs text-muted-foreground text-center leading-relaxed">
