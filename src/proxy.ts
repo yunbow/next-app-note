@@ -1,6 +1,5 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
 export default auth((req) => {
   const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
@@ -29,12 +28,34 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
+  // CSP with nonce per-request (security.md §3.4)
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const isDev = process.env.NODE_ENV === "development";
+  const imgSrc = isDev
+    ? "img-src 'self' data: https: http://localhost:9002"
+    : "img-src 'self' data: https:";
+  const connectSrc = isDev
+    ? "connect-src 'self' https: ws://localhost:*"
+    : "connect-src 'self' https: wss:";
+
+  const csp = [
+    "default-src 'self'",
+    `script-src 'nonce-${nonce}' 'strict-dynamic'`,
+    "style-src 'self' 'unsafe-inline'",
+    imgSrc,
+    "font-src 'self' data:",
+    connectSrc,
+    "frame-ancestors 'none'",
+  ].join("; ");
+
   const response = NextResponse.next({
     request: {
       headers: new Headers([...req.headers, ["x-request-id", requestId]]),
     },
   });
   response.headers.set("x-request-id", requestId);
+  response.headers.set("Content-Security-Policy", csp);
+  response.headers.set("x-nonce", nonce);
   return response;
 });
 
