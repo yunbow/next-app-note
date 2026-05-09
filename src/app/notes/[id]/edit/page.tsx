@@ -27,11 +27,17 @@ export default async function EditNotePage({ params }: EditNotePageProps) {
     redirect(`/notes/${id}`);
   }
 
+  const currentUser = {
+    id: session.user.id,
+    name: session.user.name ?? null,
+    email: session.user.email ?? null,
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">ノート編集</h1>
       <div className="max-w-4xl">
-        <NoteEditForm note={result.data} />
+        <NoteEditForm note={result.data} currentUser={currentUser} />
       </div>
     </div>
   );

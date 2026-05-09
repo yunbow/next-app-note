@@ -1,33 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MarkdownEditor } from "./MarkdownEditor";
+import { CollaborativeEditor, type CollaborativeEditorHandle } from "./CollaborativeEditor";
 import { updateNote } from "../server/actions";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Tag, X } from "lucide-react";
+import { Save, Tag, X } from "lucide-react";
 
 interface NoteEditFormProps {
-  note: any;
+  note: {
+    id: string;
+    title: string;
+    content: string;
+    tags?: Array<{ tag: { name: string } }>;
+  };
+  currentUser: { id: string; name: string | null; email: string | null };
 }
 
-export function NoteEditForm({ note }: NoteEditFormProps) {
+export function NoteEditForm({ note, currentUser }: NoteEditFormProps) {
   const router = useRouter();
+  const editorRef = useRef<CollaborativeEditorHandle>(null);
+  const [title, setTitle] = useState(note.title);
   const [tags, setTags] = useState<string[]>(
-    note.tags?.map((t: any) => t.tag.name) || [],
+    note.tags?.map((t) => t.tag.name) || [],
   );
   const [tagInput, setTagInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = async (title: string, content: string) => {
-    const result = await updateNote({
-      id: note.id,
-      title,
-      content,
-      tags,
-    });
+  const handleSave = async () => {
+    setIsSaving(true);
+    const content = editorRef.current?.getContent() ?? note.content;
+    const result = await updateNote({ id: note.id, title, content, tags });
+    setIsSaving(false);
 
     if (result.success) {
       toast.success("ノートを更新しました");
@@ -51,7 +58,20 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-white p-6 dark:bg-gray-800">
+        {/* Title */}
         <div className="mb-4 space-y-2">
+          <Label htmlFor="title">タイトル</Label>
+          <Input
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="ノートのタイトルを入力..."
+            className="text-lg font-semibold"
+          />
+        </div>
+
+        {/* Tags */}
+        <div className="mb-6 space-y-2">
           <Label htmlFor="tags">タグ</Label>
           <div className="flex gap-2">
             <Input
@@ -91,11 +111,24 @@ export function NoteEditForm({ note }: NoteEditFormProps) {
           )}
         </div>
 
-        <MarkdownEditor
-          initialTitle={note.title}
-          initialContent={note.content}
-          onSave={handleSave}
-        />
+        {/* Collaborative editor */}
+        <div className="space-y-2">
+          <Label>内容（リアルタイム共同編集）</Label>
+          <CollaborativeEditor
+            ref={editorRef}
+            noteId={note.id}
+            initialContent={note.content}
+            currentUser={currentUser}
+          />
+        </div>
+
+        {/* Save */}
+        <div className="mt-4 flex justify-end">
+          <Button onClick={handleSave} disabled={isSaving}>
+            <Save className="mr-2 h-4 w-4" />
+            {isSaving ? "保存中..." : "保存"}
+          </Button>
+        </div>
       </div>
     </div>
   );
