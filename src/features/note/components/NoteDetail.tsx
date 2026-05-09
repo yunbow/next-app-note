@@ -15,10 +15,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Edit, Trash2, Share2, History, ArrowLeft, RotateCcw, Eye, Link2, User } from "lucide-react";
+import { Edit, Trash2, Share2, History, ArrowLeft, RotateCcw, Eye, Link2, User, GitCompare } from "lucide-react";
 import { deleteNote } from "../server/actions";
 import { restoreNoteVersion } from "../server/version-actions";
 import { NoteLinks } from "./NoteLinks";
+import { VersionDiff } from "./VersionDiff";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -66,6 +67,7 @@ export function NoteDetail({ note }: NoteDetailProps) {
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
   const [previewVersion, setPreviewVersion] = useState<NoteVersion | null>(null);
   const [confirmRestore, setConfirmRestore] = useState<NoteVersion | null>(null);
+  const [diffVersion, setDiffVersion] = useState<NoteVersion | null>(null);
 
   const handleRestore = async (version: NoteVersion) => {
     setIsRestoring(version.id);
@@ -253,6 +255,14 @@ export function NoteDetail({ note }: NoteDetailProps) {
                           <Button
                             size="sm"
                             variant="outline"
+                            onClick={() => setDiffVersion(version)}
+                          >
+                            <GitCompare className="mr-1 h-4 w-4" />
+                            差分
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => setPreviewVersion(version)}
                           >
                             <Eye className="mr-1 h-4 w-4" />
@@ -324,6 +334,60 @@ export function NoteDetail({ note }: NoteDetailProps) {
                 if (previewVersion) {
                   setConfirmRestore(previewVersion);
                   setPreviewVersion(null);
+                }
+              }}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              このバージョンを復元
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diff Dialog */}
+      <Dialog
+        open={!!diffVersion}
+        onOpenChange={(open) => !open && setDiffVersion(null)}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GitCompare className="h-4 w-4" />
+              差分表示
+            </DialogTitle>
+            <DialogDescription>
+              {diffVersion && (
+                <>
+                  {format(new Date(diffVersion.createdAt), "yyyy/MM/dd HH:mm", { locale: ja })}
+                  {" 時点 → 現在"}
+                  {diffVersion.user && (
+                    <span className="ml-2 text-muted-foreground">
+                      — {diffVersion.user.name || diffVersion.user.email}
+                    </span>
+                  )}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[500px]">
+            {diffVersion && (
+              <VersionDiff
+                oldContent={diffVersion.content}
+                newContent={note.content}
+                oldLabel={format(new Date(diffVersion.createdAt), "MM/dd HH:mm", { locale: ja })}
+                newLabel="現在"
+              />
+            )}
+          </ScrollArea>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiffVersion(null)}>
+              閉じる
+            </Button>
+            <Button
+              onClick={() => {
+                if (diffVersion) {
+                  setConfirmRestore(diffVersion);
+                  setDiffVersion(null);
                 }
               }}
             >
