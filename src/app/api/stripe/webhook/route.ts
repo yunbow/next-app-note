@@ -35,7 +35,7 @@ async function handleCheckoutCompleted(
       stripePriceId: stripeSub.items.data[0]?.price.id,
       plan: planKey,
       status: stripeSub.status,
-      currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+      currentPeriodEnd: new Date((stripeSub.items.data[0]?.current_period_end ?? stripeSub.billing_cycle_anchor) * 1000),
       cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
     },
     update: {
@@ -43,7 +43,7 @@ async function handleCheckoutCompleted(
       stripePriceId: stripeSub.items.data[0]?.price.id,
       plan: planKey,
       status: stripeSub.status,
-      currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+      currentPeriodEnd: new Date((stripeSub.items.data[0]?.current_period_end ?? stripeSub.billing_cycle_anchor) * 1000),
       cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
     },
   });
@@ -74,7 +74,7 @@ async function handleSubscriptionUpsert(
       stripePriceId: priceId,
       plan,
       status: stripeSub.status,
-      currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
+      currentPeriodEnd: new Date((stripeSub.items.data[0]?.current_period_end ?? stripeSub.billing_cycle_anchor) * 1000),
       cancelAtPeriodEnd: stripeSub.cancel_at_period_end,
     },
   });

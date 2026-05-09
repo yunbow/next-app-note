@@ -33,6 +33,7 @@ export type Translations = {
     tags: string;
     profile: string;
     settings: string;
+    explore: string;
   };
   accessibility: {
     showPassword: string;
@@ -247,6 +248,7 @@ export const ja: Translations = {
     tags: "タグ",
     profile: "プロフィール",
     settings: "設定",
+    explore: "検索",
   },
 
   accessibility: {

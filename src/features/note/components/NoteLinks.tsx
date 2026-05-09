@@ -52,11 +52,11 @@ export function NoteLinks({ noteId, links, linkedFrom }: NoteLinksProps) {
 
   const loadNotes = async () => {
     setIsFetchingNotes(true);
-    const result = await getNotes();
+    const result = await getNotes({ all: true });
     setIsFetchingNotes(false);
     if (result.success && result.data) {
       setAvailableNotes(
-        result.data
+        result.data.notes
           .filter((n: LinkedNote) => !linkedNoteIds.has(n.id))
           .map((n: LinkedNote) => ({ id: n.id, title: n.title }))
       );

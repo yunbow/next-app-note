@@ -5,28 +5,26 @@ import { useLocale } from "./context";
 export function useTranslations() {
   const { t: translations } = useLocale();
   
-  // ネストされたオブジェクトから値を取得するヘルパー関数
-  const t = (key: string, params?: Record<string, string>) => {
+  const t = (key: string, params?: Record<string, string>): string => {
     const keys = key.split(".");
-    let value: any = translations;
-    
+    let value: unknown = translations;
+
     for (const k of keys) {
-      value = value?.[k];
-      if (value === undefined) {
+      if (typeof value !== "object" || value === null || !(k in value)) {
         console.warn(`Translation key not found: ${key}`);
         return key;
       }
+      value = (value as Record<string, unknown>)[k];
     }
-    
-    // パラメータ置換
+
     if (typeof value === "string" && params) {
       return Object.entries(params).reduce(
-        (str, [key, val]) => str.replace(`{${key}}`, val),
-        value
+        (str, [k, val]) => str.replace(`{${k}}`, val),
+        value,
       );
     }
-    
-    return value;
+
+    return typeof value === "string" ? value : key;
   };
   
   return { t };

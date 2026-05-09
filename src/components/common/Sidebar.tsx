@@ -9,6 +9,8 @@ import {
   ChevronRight,
   LayoutDashboard,
   LogOut,
+  Search,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,9 +33,23 @@ import {
 } from "./icons";
 import { useTranslations } from "@/lib/i18n";
 import { getMyFollowStats } from "@/features/follow/server/follow-actions";
+import { getSubscriptionAction } from "@/features/billing/server/subscription-actions";
+import { PLANS, type PlanType } from "@/lib/stripe/plans";
+
+const PLAN_BADGE_CLASS: Record<PlanType, string> = {
+  free: "bg-muted text-muted-foreground",
+  basic: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  premium: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+};
+
+const PLAN_DOT_CLASS: Record<PlanType, string> = {
+  free: "bg-muted-foreground",
+  basic: "bg-blue-500",
+  premium: "bg-amber-500",
+};
 
 type NavItem = {
-  labelKey: "dashboard" | "notes" | "folders" | "tags" | "profile" | "settings";
+  labelKey: "dashboard" | "notes" | "folders" | "tags" | "profile" | "settings" | "explore";
   href: string;
   icon: React.ReactNode;
   authRequired?: boolean;
@@ -44,6 +60,12 @@ const getNavItems = (userId?: string): NavItem[] => [
     labelKey: "dashboard",
     href: "/dashboard",
     icon: <LayoutDashboard className="h-5 w-5" />,
+  },
+  {
+    labelKey: "explore",
+    href: "/search",
+    icon: <Search className="h-5 w-5" />,
+    authRequired: true,
   },
   {
     labelKey: "notes",
@@ -79,6 +101,7 @@ export function Sidebar() {
     followers: 0,
     following: 0,
   });
+  const [plan, setPlan] = useState<PlanType>("free");
   const pathname = usePathname();
   const { data: session } = useSession();
   const { t } = useTranslations();
@@ -87,6 +110,9 @@ export function Sidebar() {
     if (!session?.user?.id) return;
     getMyFollowStats().then((result) => {
       if (result.success) setFollowStats(result.data);
+    });
+    getSubscriptionAction().then((result) => {
+      if (result.success) setPlan(result.data.plan);
     });
   }, [session?.user?.id]);
 
@@ -193,14 +219,38 @@ export function Sidebar() {
               )}
               aria-label={t("accessibility.userMenu")}
             >
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarFallback>{getUserInitial()}</AvatarFallback>
-              </Avatar>
+              <div className="relative shrink-0">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>{getUserInitial()}</AvatarFallback>
+                </Avatar>
+                {isCollapsed && (
+                  <span
+                    className={cn(
+                      "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background",
+                      PLAN_DOT_CLASS[plan],
+                    )}
+                    aria-hidden="true"
+                  />
+                )}
+              </div>
               {!isCollapsed && (
                 <div className="flex-1 overflow-hidden text-left">
-                  <p className="truncate text-sm font-medium">
-                    {session.user?.name || t("common.nameNotSet")}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-medium">
+                      {session.user?.name || t("common.nameNotSet")}
+                    </p>
+                    <span
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-medium",
+                        PLAN_BADGE_CLASS[plan],
+                      )}
+                    >
+                      {plan === "premium" && (
+                        <Zap className="h-2.5 w-2.5" aria-hidden="true" />
+                      )}
+                      {PLANS[plan].name}
+                    </span>
+                  </div>
                   <p className="text-muted-foreground truncate text-xs">
                     {session.user?.email}
                   </p>

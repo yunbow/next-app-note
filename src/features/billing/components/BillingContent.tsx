@@ -37,6 +37,13 @@ export function BillingContent() {
   );
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<PlanType | "portal" | null>(null);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pendingRedirect) {
+      window.location.href = pendingRedirect;
+    }
+  }, [pendingRedirect]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -60,7 +67,7 @@ export function BillingContent() {
     setActionLoading(planKey);
     const result = await createCheckoutSessionAction(planKey);
     if (result.success) {
-      window.location.href = result.data.url;
+      setPendingRedirect(result.data.url);
     } else {
       toast.error(result.error);
       setActionLoading(null);
@@ -71,7 +78,7 @@ export function BillingContent() {
     setActionLoading("portal");
     const result = await createPortalSessionAction();
     if (result.success) {
-      window.location.href = result.data.url;
+      setPendingRedirect(result.data.url);
     } else {
       toast.error(result.error);
       setActionLoading(null);

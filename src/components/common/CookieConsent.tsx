@@ -1,31 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n";
 
+const listeners = new Set<() => void>();
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot() {
+  return localStorage.getItem("cookie-consent");
+}
+
+function setConsent(value: string) {
+  localStorage.setItem("cookie-consent", value);
+  listeners.forEach((l) => l());
+}
+
 export function CookieConsent() {
   const { t } = useTranslations();
-  const [showConsent, setShowConsent] = useState(false);
+  // Server snapshot is non-null → renders null on SSR (no banner).
+  // Client snapshot is null when no cookie → shows banner.
+  // React handles the server/client mismatch via useSyncExternalStore without hydration errors.
+  const consent = useSyncExternalStore(subscribe, getSnapshot, () => "ssr");
 
-  useEffect(() => {
-    const consent = localStorage.getItem("cookie-consent");
-    if (!consent) {
-      setShowConsent(true);
-    }
-  }, []);
-
-  const handleAccept = () => {
-    localStorage.setItem("cookie-consent", "accepted");
-    setShowConsent(false);
-  };
-
-  const handleDecline = () => {
-    localStorage.setItem("cookie-consent", "declined");
-    setShowConsent(false);
-  };
-
-  if (!showConsent) return null;
+  if (consent !== null) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background p-4 shadow-lg">
@@ -34,10 +36,10 @@ export function CookieConsent() {
           {t("cookieConsent.message")}
         </p>
         <div className="flex gap-2">
-          <Button onClick={handleDecline} variant="outline" size="sm">
+          <Button onClick={() => setConsent("declined")} variant="outline" size="sm">
             {t("cookieConsent.decline")}
           </Button>
-          <Button onClick={handleAccept} size="sm">
+          <Button onClick={() => setConsent("accepted")} size="sm">
             {t("cookieConsent.accept")}
           </Button>
         </div>

@@ -224,6 +224,18 @@ export async function seedDev(prisma: PrismaClient) {
     ['技術'],
   )
 
+  // Alice: Premium プラン
+  await prisma.subscription.upsert({
+    where: { userId: alice.id },
+    update: { plan: 'premium', status: 'active' },
+    create: {
+      userId: alice.id,
+      plan: 'premium',
+      status: 'active',
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30日後
+    },
+  })
+
   // Follow relationships: alice <-> bob (互いにフォロー)
   await prisma.follow.upsert({
     where: { followerId_followingId: { followerId: alice.id, followingId: bob.id } },
@@ -236,7 +248,7 @@ export async function seedDev(prisma: PrismaClient) {
     create: { followerId: bob.id, followingId: alice.id },
   })
 
-  console.log('[seed:dev] users, notes, and follows seeded')
-  console.log('  alice@example.com / password123')
-  console.log('  bob@example.com   / password123')
+  console.log('[seed:dev] users, notes, follows, and subscriptions seeded')
+  console.log('  alice@example.com / password123  (Premium)')
+  console.log('  bob@example.com   / password123  (Free)')
 }

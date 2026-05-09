@@ -4,15 +4,25 @@ import { Folder } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getCategoriesWithCount } from "@/features/category/server/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
 
-export default async function FoldersPage() {
+interface Props {
+  searchParams: Promise<{ page?: string }>;
+}
+
+export default async function FoldersPage({ searchParams }: Props) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/login");
   }
 
-  const result = await getCategoriesWithCount();
-  const folders = result.success && result.data ? result.data : [];
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+
+  const result = await getCategoriesWithCount({ page });
+  const { items: folders, total, totalPages, page: currentPage } = result.success && result.data
+    ? result.data
+    : { items: [], total: 0, totalPages: 1, page: 1 };
 
   return (
     <div className="space-y-6">
@@ -29,7 +39,7 @@ export default async function FoldersPage() {
             <Folder className="h-5 w-5" />
             すべてのフォルダ
             <span className="text-sm font-normal text-muted-foreground">
-              ({folders.length})
+              ({total})
             </span>
           </CardTitle>
         </CardHeader>
@@ -62,6 +72,12 @@ export default async function FoldersPage() {
           )}
         </CardContent>
       </Card>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        createHref={(p) => `/folders${p > 1 ? `?page=${p}` : ""}`}
+      />
     </div>
   );
 }

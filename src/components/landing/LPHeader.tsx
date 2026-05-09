@@ -12,17 +12,13 @@ import {
 import { useTranslations, useLocale } from "@/lib/i18n";
 import { Moon, Sun, Globe, Monitor, Check } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 
 export function LPHeader() {
   const { t } = useTranslations();
   const { locale, setLocale } = useLocale();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
 
   return (
     <header className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur">

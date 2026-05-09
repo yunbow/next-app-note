@@ -44,10 +44,10 @@ export function LoginForm() {
         toast.error(t("login.invalidCredentials"));
       } else {
         toast.success(t("login.submit"));
-        router.push("/notes");
+        router.push("/dashboard");
         router.refresh();
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error(t("login.failed"));
     } finally {
       setIsLoading(false);
@@ -57,8 +57,8 @@ export function LoginForm() {
   const handleOAuthSignIn = async (provider: "google" | "github") => {
     setIsLoading(true);
     try {
-      await signIn(provider, { callbackUrl: "/notes" });
-    } catch (error) {
+      await signIn(provider, { callbackUrl: "/dashboard" });
+    } catch (_error) {
       toast.error(t("login.failed"));
       setIsLoading(false);
     }

@@ -1,4 +1,4 @@
-import { expect, vi, type Mock } from "vitest";
+import { expect, type Mock } from "vitest";
 import type { Session } from "next-auth";
 
 type ActionResult<T> =

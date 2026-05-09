@@ -22,11 +22,10 @@ export default async function HomePage() {
     getCategoriesWithCount(),
   ]);
 
-  const notes = notesResult.success && notesResult.data ? notesResult.data : [];
-  const tags = tagsResult.success && tagsResult.data ? tagsResult.data : [];
-  const folders =
-    foldersResult.success && foldersResult.data ? foldersResult.data : [];
-  const recentNotes = notes.slice(0, 5);
+  const notesData = notesResult.success && notesResult.data ? notesResult.data : { notes: [], total: 0 };
+  const tagsData = tagsResult.success && tagsResult.data ? tagsResult.data : { items: [], total: 0 };
+  const foldersData = foldersResult.success && foldersResult.data ? foldersResult.data : { items: [], total: 0 };
+  const recentNotes = notesData.notes.slice(0, 5);
   const displayName = session.user.name ?? session.user.email ?? "";
 
   return (
@@ -53,7 +52,7 @@ export default async function HomePage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{notes.length}</div>
+            <div className="text-2xl font-bold">{notesData.total}</div>
             <Link
               href="/notes"
               className="text-xs text-muted-foreground hover:underline"
@@ -68,7 +67,7 @@ export default async function HomePage() {
             <Folder className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{folders.length}</div>
+            <div className="text-2xl font-bold">{foldersData.total}</div>
             <Link
               href="/folders"
               className="text-xs text-muted-foreground hover:underline"
@@ -83,7 +82,7 @@ export default async function HomePage() {
             <TagIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{tags.length}</div>
+            <div className="text-2xl font-bold">{tagsData.total}</div>
             <Link
               href="/tags"
               className="text-xs text-muted-foreground hover:underline"

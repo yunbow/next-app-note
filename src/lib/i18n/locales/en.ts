@@ -40,6 +40,7 @@ export const en: Translations = {
     tags: "Tags",
     profile: "Profile",
     settings: "Settings",
+    explore: "Search",
   },
 
   accessibility: {

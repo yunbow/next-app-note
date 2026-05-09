@@ -87,7 +87,7 @@ export function MarkdownEditor({
         />
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "edit" | "preview")} className="flex-1">
         <div className="mb-2 flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="edit" className="flex items-center gap-2">

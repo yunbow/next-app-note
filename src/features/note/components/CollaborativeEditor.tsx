@@ -8,7 +8,7 @@ import {
   useImperativeHandle,
 } from "react";
 import * as Y from "yjs";
-import { WebsocketProvider } from "y-websocket";
+import { HocuspocusProvider } from "@hocuspocus/provider";
 import { yCollab, yUndoManagerKeymap } from "y-codemirror.next";
 import { EditorView, basicSetup } from "codemirror";
 import { markdown } from "@codemirror/lang-markdown";
@@ -48,7 +48,7 @@ export const CollaborativeEditor = forwardRef<
 >(function CollaborativeEditor({ noteId, initialContent, currentUser }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
-  const providerRef = useRef<WebsocketProvider | null>(null);
+  const providerRef = useRef<HocuspocusProvider | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const fallbackContentRef = useRef(initialContent);
 
@@ -71,7 +71,7 @@ export const CollaborativeEditor = forwardRef<
   useEffect(() => {
     type Session = {
       ydoc: Y.Doc;
-      provider: WebsocketProvider;
+      provider: HocuspocusProvider;
       updateUsers: () => void;
       syncTimeout: ReturnType<typeof setTimeout>;
     };
@@ -82,39 +82,42 @@ export const CollaborativeEditor = forwardRef<
       const yText = ydoc.getText("content");
       ydocRef.current = ydoc;
 
-      const provider = new WebsocketProvider(WS_URL, `note-${noteId}`, ydoc);
+      const syncTimeout = setTimeout(() => {
+        setMode((prev) => (prev === "loading" ? "fallback" : prev));
+      }, SYNC_TIMEOUT_MS);
+
+      const provider = new HocuspocusProvider({
+        url: WS_URL,
+        name: `note-${noteId}`,
+        document: ydoc,
+        onSynced({ state }: { state: boolean }) {
+          if (!state) return;
+          clearTimeout(syncTimeout);
+
+          if (yText.length === 0 && initialContent) {
+            ydoc.transact(() => {
+              yText.insert(0, initialContent);
+            });
+          }
+
+          setMode("ready");
+        },
+      });
       providerRef.current = provider;
 
-      provider.awareness.setLocalStateField("user", {
+      provider.awareness?.setLocalStateField("user", {
         name: currentUser.name || currentUser.email || "Anonymous",
         color: getUserColor(currentUser.id),
       });
 
       const updateUsers = () => {
         const users: OnlineUser[] = [];
-        provider.awareness.getStates().forEach((state) => {
+        provider.awareness?.getStates().forEach((state) => {
           if (state.user) users.push(state.user as OnlineUser);
         });
         setOnlineUsers(users);
       };
-      provider.awareness.on("change", updateUsers);
-
-      const syncTimeout = setTimeout(() => {
-        setMode((prev) => (prev === "loading" ? "fallback" : prev));
-      }, SYNC_TIMEOUT_MS);
-
-      provider.on("sync", (isSynced: boolean) => {
-        if (!isSynced) return;
-        clearTimeout(syncTimeout);
-
-        if (yText.length === 0 && initialContent) {
-          ydoc.transact(() => {
-            yText.insert(0, initialContent);
-          });
-        }
-
-        setMode("ready");
-      });
+      provider.awareness?.on("change", updateUsers);
 
       session = { ydoc, provider, updateUsers, syncTimeout };
     }, 0);
@@ -123,7 +126,7 @@ export const CollaborativeEditor = forwardRef<
       clearTimeout(connectTimer);
       if (session) {
         clearTimeout(session.syncTimeout);
-        session.provider.awareness.off("change", session.updateUsers);
+        session.provider.awareness?.off("change", session.updateUsers);
         session.provider.destroy();
         session.ydoc.destroy();
       }
@@ -143,6 +146,7 @@ export const CollaborativeEditor = forwardRef<
     const undoManager = new Y.UndoManager(yText);
 
     viewRef.current = new EditorView({
+      doc: yText.toString(),
       extensions: [
         basicSetup,
         markdown(),

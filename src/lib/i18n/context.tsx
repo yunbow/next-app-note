@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState } from "react";
 import type { Locale } from "./types";
 import { defaultLocale } from "./types";
 import { translations } from "./locales";
@@ -21,25 +21,21 @@ export function LocaleProvider({
   children: React.ReactNode;
   initialLocale?: Locale;
 }) {
-  const [locale, setLocaleState] = useState<Locale>(
-    initialLocale || defaultLocale
-  );
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    if (typeof document !== "undefined") {
+      const cookieLocale = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("locale="))
+        ?.split("=")[1] as Locale | undefined;
+      if (cookieLocale) return cookieLocale;
+    }
+    return initialLocale || defaultLocale;
+  });
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);
     document.cookie = `locale=${newLocale}; path=/; max-age=31536000`;
   };
-
-  useEffect(() => {
-    const cookieLocale = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("locale="))
-      ?.split("=")[1] as Locale | undefined;
-
-    if (cookieLocale && cookieLocale !== locale) {
-      setLocaleState(cookieLocale);
-    }
-  }, [locale]);
 
   const t = translations[locale];
 

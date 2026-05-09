@@ -154,6 +154,8 @@ npm run dev:collab
 
 [http://localhost:3000](http://localhost:3000) を開いて動作確認します。
 
+サイドバーの **探索**（虫眼鏡アイコン）から `/search` で全ユーザーの公開ノートをキーワード検索できます。
+
 > **WebSocket サーバーを起動しない場合:** `/notes/[id]/edit` を開くと CodeMirror エディタは表示されますが、WS 接続が失敗します。`onStoreDocument` による自動保存は行われないため、「保存」ボタンで手動保存してください。
 
 ---
@@ -241,6 +243,8 @@ npm run upload:static     # ブランドロゴ等の静的画像を R2 / MinIO �
 | -------- | ----------------- | ------------- | ------- |
 | Alice    | alice@example.com | `password123` | Premium |
 | Bob      | bob@example.com   | `password123` | Free    |
+
+> Alice は `subscriptions` テーブルに Premium レコードが自動投入されます。Bob はレコードなし（デフォルト Free）。
 
 ### ノートデータ
 

@@ -5,14 +5,23 @@ import { prisma } from "@/lib/prisma";
 import { AuthenticationError, isAppError } from "@/lib/errors";
 import { logError } from "@/lib/logger/index";
 
+const FOLDERS_PAGE_SIZE = 15;
+
 export type CategoryWithCount = {
   id: string;
   name: string;
   noteCount: number;
 };
 
-export async function getCategoriesWithCount(): Promise<
-  { success: true; data: CategoryWithCount[] } | { success: false; error: string }
+export type CategoryPage = {
+  items: CategoryWithCount[];
+  total: number;
+  page: number;
+  totalPages: number;
+};
+
+export async function getCategoriesWithCount(options?: { page?: number }): Promise<
+  { success: true; data: CategoryPage } | { success: false; error: string }
 > {
   try {
     const session = await auth();
@@ -21,38 +30,49 @@ export async function getCategoriesWithCount(): Promise<
     }
 
     const userId = session.user.id;
+    const page = Math.max(1, options?.page ?? 1);
 
-    const categories = await prisma.category.findMany({
-      where: {
-        notes: {
-          some: {
-            note: { authorId: userId },
-          },
+    const where = {
+      notes: {
+        some: {
+          note: { authorId: userId },
         },
       },
-      select: {
-        id: true,
-        name: true,
-        _count: {
-          select: {
-            notes: {
-              where: {
-                note: { authorId: userId },
-              },
+    };
+
+    const select = {
+      id: true,
+      name: true,
+      _count: {
+        select: {
+          notes: {
+            where: {
+              note: { authorId: userId },
             },
           },
         },
       },
-      orderBy: { name: "asc" },
-    });
+    } as const;
 
-    const data: CategoryWithCount[] = categories.map((c) => ({
+    const [categories, total] = await prisma.$transaction([
+      prisma.category.findMany({
+        where,
+        select,
+        orderBy: { name: "asc" },
+        skip: (page - 1) * FOLDERS_PAGE_SIZE,
+        take: FOLDERS_PAGE_SIZE,
+      }),
+      prisma.category.count({ where }),
+    ]);
+
+    const items: CategoryWithCount[] = categories.map((c) => ({
       id: c.id,
       name: c.name,
       noteCount: c._count.notes,
     }));
 
-    return { success: true, data };
+    const totalPages = Math.ceil(total / FOLDERS_PAGE_SIZE);
+    return { success: true, data: { items, total, page, totalPages } };
   } catch (error) {
     if (isAppError(error)) {
       logError(error, "getCategoriesWithCount");

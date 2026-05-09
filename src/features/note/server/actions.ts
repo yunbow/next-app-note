@@ -579,3 +579,43 @@ export async function getTemplates() {
     return { success: false, error: "テンプレートの取得に失敗しました" };
   }
 }
+
+const PUBLIC_NOTES_PAGE_SIZE = 12;
+
+// 公開ノート一覧取得（全ユーザーの公開ノートを返す）
+export async function getPublicNotes(options?: { page?: number; q?: string }) {
+  try {
+    const page = Math.max(1, options?.page ?? 1);
+    const q = options?.q?.trim() ?? "";
+
+    const where = {
+      visibility: "public" as const,
+      ...(q && {
+        OR: [
+          { title: { contains: q } },
+          { content: { contains: q } },
+        ],
+      }),
+    };
+
+    const [notes, total] = await prisma.$transaction([
+      prisma.note.findMany({
+        where,
+        include: {
+          author: { select: { id: true, name: true, email: true } },
+          tags: { include: { tag: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+        skip: (page - 1) * PUBLIC_NOTES_PAGE_SIZE,
+        take: PUBLIC_NOTES_PAGE_SIZE,
+      }),
+      prisma.note.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / PUBLIC_NOTES_PAGE_SIZE);
+    return { success: true, data: { notes, total, page, totalPages } };
+  } catch (error) {
+    logError(error, "getPublicNotes");
+    return { success: false, error: "公開ノートの取得に失敗しました" };
+  }
+}

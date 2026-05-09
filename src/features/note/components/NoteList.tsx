@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { ja } from "date-fns/locale";
-import { Search, Plus, Tag, Folder } from "lucide-react";
+import { Search, Plus, Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 
 interface Note {
   id: string;
@@ -20,26 +22,31 @@ interface Note {
 
 interface NoteListProps {
   notes: Note[];
+  allTags: string[];
+  currentTag: string;
+  currentQ: string;
+  currentPage: number;
+  totalPages: number;
 }
 
-export function NoteList({ notes }: NoteListProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+export function NoteList({ notes, allTags, currentTag, currentQ, currentPage, totalPages }: NoteListProps) {
+  const router = useRouter();
+  const [inputValue, setInputValue] = useState(currentQ);
 
-  // タグ一覧を取得
-  const allTags = Array.from(
-    new Set(notes.flatMap((note) => note.tags.map((t) => t.tag.name))),
-  );
+  const buildHref = (q: string, tag: string, page?: number) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (tag) params.set("tag", tag);
+    if (page && page > 1) params.set("page", String(page));
+    const qs = params.toString();
+    return `/notes${qs ? `?${qs}` : ""}`;
+  };
 
-  // フィルタリング
-  const filteredNotes = notes.filter((note) => {
-    const matchesSearch =
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesTag =
-      !selectedTag || note.tags.some((t) => t.tag.name === selectedTag);
-    return matchesSearch && matchesTag;
-  });
+  const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      router.push(buildHref(inputValue, currentTag));
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -47,9 +54,10 @@ export function NoteList({ notes }: NoteListProps) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
-            placeholder="ノートを検索..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="ノートを検索... (Enterで検索)"
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleSearchKey}
             className="pl-10"
           />
         </div>
@@ -63,29 +71,27 @@ export function NoteList({ notes }: NoteListProps) {
 
       {allTags.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant={selectedTag === null ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedTag(null)}
-          >
-            すべて
-          </Button>
-          {allTags.map((tag) => (
-            <Button
-              key={tag}
-              variant={selectedTag === tag ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedTag(tag)}
-            >
-              <Tag className="mr-1 h-3 w-3" />
-              {tag}
+          <Link href={buildHref(currentQ, "")}>
+            <Button variant={!currentTag ? "default" : "outline"} size="sm">
+              すべて
             </Button>
+          </Link>
+          {allTags.map((tag) => (
+            <Link key={tag} href={buildHref(currentQ, tag)}>
+              <Button
+                variant={currentTag === tag ? "default" : "outline"}
+                size="sm"
+              >
+                <Tag className="mr-1 h-3 w-3" />
+                {tag}
+              </Button>
+            </Link>
           ))}
         </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredNotes.map((note) => (
+        {notes.map((note) => (
           <Link
             key={note.id}
             href={`/notes/${note.id}`}
@@ -115,13 +121,19 @@ export function NoteList({ notes }: NoteListProps) {
         ))}
       </div>
 
-      {filteredNotes.length === 0 && (
+      {notes.length === 0 && (
         <div className="py-12 text-center text-gray-500">
-          {searchQuery || selectedTag
+          {currentQ || currentTag
             ? "該当するノートが見つかりません"
             : "ノートがありません。新規作成してください。"}
         </div>
       )}
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        createHref={(page) => buildHref(currentQ, currentTag, page)}
+      />
     </div>
   );
 }

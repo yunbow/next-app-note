@@ -4,15 +4,25 @@ import { Tag as TagIcon } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getTagsWithCount } from "@/features/tag/server/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pagination } from "@/components/ui/pagination";
 
-export default async function TagsPage() {
+interface Props {
+  searchParams: Promise<{ page?: string }>;
+}
+
+export default async function TagsPage({ searchParams }: Props) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/login");
   }
 
-  const result = await getTagsWithCount();
-  const tags = result.success && result.data ? result.data : [];
+  const params = await searchParams;
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+
+  const result = await getTagsWithCount({ page });
+  const { items: tags, total, totalPages, page: currentPage } = result.success && result.data
+    ? result.data
+    : { items: [], total: 0, totalPages: 1, page: 1 };
 
   return (
     <div className="space-y-6">
@@ -29,7 +39,7 @@ export default async function TagsPage() {
             <TagIcon className="h-5 w-5" />
             すべてのタグ
             <span className="text-sm font-normal text-muted-foreground">
-              ({tags.length})
+              ({total})
             </span>
           </CardTitle>
         </CardHeader>
@@ -58,6 +68,12 @@ export default async function TagsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        createHref={(p) => `/tags${p > 1 ? `?page=${p}` : ""}`}
+      />
     </div>
   );
 }
