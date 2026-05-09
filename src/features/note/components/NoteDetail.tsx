@@ -15,21 +15,49 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Edit, Trash2, Share2, History, ArrowLeft, RotateCcw, Eye, Link2 } from "lucide-react";
+import { Edit, Trash2, Share2, History, ArrowLeft, RotateCcw, Eye, Link2, User } from "lucide-react";
 import { deleteNote } from "../server/actions";
 import { restoreNoteVersion } from "../server/version-actions";
 import { NoteLinks } from "./NoteLinks";
 import { toast } from "sonner";
 import Link from "next/link";
 
+interface LinkedNote {
+  id: string;
+  title: string;
+}
+
+interface NoteLinkRow {
+  id: string;
+  sourceNote?: LinkedNote;
+  targetNote?: LinkedNote;
+}
+
+interface NoteDetailNote {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  tags: Array<{ tag: { name: string } }>;
+  links?: NoteLinkRow[];
+  linkedFrom?: NoteLinkRow[];
+  versions?: NoteVersion[];
+}
+
 interface NoteDetailProps {
-  note: any;
+  note: NoteDetailNote;
 }
 
 interface NoteVersion {
   id: string;
   content: string;
   createdAt: string | Date;
+  user?: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  } | null;
 }
 
 export function NoteDetail({ note }: NoteDetailProps) {
@@ -145,7 +173,7 @@ export function NoteDetail({ note }: NoteDetailProps) {
 
         {note.tags.length > 0 && (
           <div className="mb-6 flex flex-wrap gap-2">
-            {note.tags.map((t: any) => (
+            {note.tags.map((t) => (
               <span
                 key={t.tag.name}
                 className="rounded bg-blue-100 px-3 py-1 text-sm text-blue-800 dark:bg-blue-900 dark:text-blue-200"
@@ -203,7 +231,7 @@ export function NoteDetail({ note }: NoteDetailProps) {
                     >
                       <div className="mb-2 flex items-start justify-between gap-3">
                         <div className="text-sm text-gray-600 dark:text-gray-400">
-                          <div>
+                          <div className="font-medium">
                             {format(new Date(version.createdAt), "yyyy/MM/dd HH:mm", {
                               locale: ja,
                             })}
@@ -213,6 +241,12 @@ export function NoteDetail({ note }: NoteDetailProps) {
                               addSuffix: true,
                               locale: ja,
                             })}
+                          </div>
+                          <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            <span>
+                              {version.user?.name || version.user?.email || "不明なユーザー"}
+                            </span>
                           </div>
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
@@ -257,11 +291,17 @@ export function NoteDetail({ note }: NoteDetailProps) {
           <DialogHeader>
             <DialogTitle>バージョンのプレビュー</DialogTitle>
             <DialogDescription>
-              {previewVersion &&
-                format(new Date(previewVersion.createdAt), "yyyy/MM/dd HH:mm", {
-                  locale: ja,
-                })}
-              {" 時点の内容"}
+              {previewVersion && (
+                <>
+                  {format(new Date(previewVersion.createdAt), "yyyy/MM/dd HH:mm", { locale: ja })}
+                  {" 時点の内容"}
+                  {previewVersion.user && (
+                    <span className="ml-2 text-muted-foreground">
+                      — {previewVersion.user.name || previewVersion.user.email}
+                    </span>
+                  )}
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="h-[500px]">

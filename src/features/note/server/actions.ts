@@ -18,11 +18,10 @@ import {
 import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 import { ZodError } from "zod";
+import type { Note, NoteShare, Template } from "@prisma/client";
 import {
   AuthenticationError,
-  ValidationError,
   isAppError,
-  getErrorMessage,
 } from "@/lib/errors";
 import { verifyNoteOwnership } from "@/features/note/services/ownership";
 import { createLogger, logError, logSuccess } from "@/lib/logger/index";
@@ -42,7 +41,7 @@ async function getSession() {
 // ノート作成
 export async function createNote(
   input: CreateNoteInput,
-): Promise<ActionResult> {
+): Promise<ActionResult<Note>> {
   try {
     const session = await getSession();
     if (!session?.user?.id) {
@@ -111,7 +110,7 @@ export async function createNote(
     });
 
     revalidatePath("/notes");
-    return { success: true, data: note as any };
+    return { success: true, data: note };
   } catch (error) {
     if (error instanceof ZodError) {
       logError(error, "createNote", { input });
@@ -135,7 +134,7 @@ export async function createNote(
 // ノート更新
 export async function updateNote(
   input: UpdateNoteInput,
-): Promise<ActionResult> {
+): Promise<ActionResult<Note>> {
   try {
     const session = await getSession();
     if (!session?.user?.id) {
@@ -174,7 +173,7 @@ export async function updateNote(
 
     revalidatePath("/notes");
     revalidatePath(`/notes/${validated.id}`);
-    return { success: true, data: note as any };
+    return { success: true, data: note };
   } catch (error) {
     if (error instanceof ZodError) {
       logError(error, "updateNote", { input });
@@ -228,24 +227,60 @@ export async function deleteNote(noteId: string): Promise<ActionResult> {
   }
 }
 
+const NOTES_PAGE_SIZE = 12;
+
 // ノート一覧取得
-export async function getNotes() {
+export async function getNotes(options?: { page?: number; q?: string; tag?: string; all?: boolean }) {
   try {
     const session = await getSession();
     if (!session?.user?.id) {
       throw new AuthenticationError();
     }
 
-    const notes = await prisma.note.findMany({
-      where: { authorId: session.user.id },
-      include: {
-        tags: { include: { tag: true } },
-        categories: { include: { category: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-    });
+    const page = Math.max(1, options?.page ?? 1);
+    const q = options?.q?.trim() ?? "";
+    const tag = options?.tag?.trim() ?? "";
 
-    return { success: true, data: notes };
+    const include = {
+      tags: { include: { tag: true } },
+      categories: { include: { category: true } },
+    } as const;
+
+    const where = {
+      authorId: session.user.id,
+      ...(q && {
+        OR: [
+          { title: { contains: q } },
+          { content: { contains: q } },
+        ],
+      }),
+      ...(tag && {
+        tags: { some: { tag: { name: tag } } },
+      }),
+    };
+
+    if (options?.all) {
+      const notes = await prisma.note.findMany({
+        where,
+        include,
+        orderBy: { updatedAt: "desc" },
+      });
+      return { success: true, data: { notes, total: notes.length, page: 1, totalPages: 1 } };
+    }
+
+    const [notes, total] = await prisma.$transaction([
+      prisma.note.findMany({
+        where,
+        include,
+        orderBy: { updatedAt: "desc" },
+        skip: (page - 1) * NOTES_PAGE_SIZE,
+        take: NOTES_PAGE_SIZE,
+      }),
+      prisma.note.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / NOTES_PAGE_SIZE);
+    return { success: true, data: { notes, total, page, totalPages } };
   } catch (error) {
     if (isAppError(error)) {
       logError(error, "getNotes");
@@ -271,7 +306,13 @@ export async function getNote(noteId: string) {
         author: { select: { id: true, name: true, email: true, image: true } },
         tags: { include: { tag: true } },
         categories: { include: { category: true } },
-        versions: { orderBy: { createdAt: "desc" }, take: 10 },
+        versions: {
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+        },
         links: {
           include: {
             targetNote: { select: { id: true, title: true } },
@@ -378,7 +419,7 @@ export async function searchNotes(input: SearchNotesInput) {
 }
 
 // ノート共有
-export async function shareNote(input: ShareNoteInput): Promise<ActionResult> {
+export async function shareNote(input: ShareNoteInput): Promise<ActionResult<NoteShare>> {
   try {
     const session = await getSession();
     if (!session?.user?.id) {
@@ -403,18 +444,17 @@ export async function shareNote(input: ShareNoteInput): Promise<ActionResult> {
       return { success: false, error: "編集権限付きの共有はPremiumプランで利用できます" };
     }
 
-    const shareData: any = {
-      noteId: validated.noteId,
-      permission: validated.permission,
-      expiresAt: validated.expiresAt,
-    };
-
-    if (validated.password) {
-      shareData.password = await bcrypt.hash(validated.password, 10);
-    }
+    const passwordHash = validated.password
+      ? await bcrypt.hash(validated.password, 10)
+      : undefined;
 
     const share = await prisma.noteShare.create({
-      data: shareData,
+      data: {
+        noteId: validated.noteId,
+        permission: validated.permission,
+        expiresAt: validated.expiresAt,
+        ...(passwordHash !== undefined && { password: passwordHash }),
+      },
     });
 
     logSuccess("Note shared successfully", "shareNote", {
@@ -423,7 +463,7 @@ export async function shareNote(input: ShareNoteInput): Promise<ActionResult> {
       userId: session.user.id,
     });
 
-    return { success: true, data: share as any };
+    return { success: true, data: share };
   } catch (error) {
     if (error instanceof ZodError) {
       logError(error, "shareNote", { input });
@@ -447,7 +487,7 @@ export async function shareNote(input: ShareNoteInput): Promise<ActionResult> {
 // テンプレート作成
 export async function createTemplate(
   input: CreateTemplateInput,
-): Promise<ActionResult> {
+): Promise<ActionResult<Template>> {
   try {
     const session = await getSession();
     if (!session?.user?.id) {
@@ -485,7 +525,7 @@ export async function createTemplate(
       userId: session.user.id,
     });
 
-    return { success: true, data: template as any };
+    return { success: true, data: template };
   } catch (error) {
     if (error instanceof ZodError) {
       logError(error, "createTemplate", { input });
