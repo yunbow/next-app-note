@@ -50,7 +50,6 @@ export const CollaborativeEditor = forwardRef<
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebsocketProvider | null>(null);
   const viewRef = useRef<EditorView | null>(null);
-  // fallback textarea の最新値を ref で保持（再レンダリングなしで追跡）
   const fallbackContentRef = useRef(initialContent);
 
   const [mode, setMode] = useState<EditorMode>("loading");
@@ -66,51 +65,68 @@ export const CollaborativeEditor = forwardRef<
   }));
 
   // Phase 1: Y.Doc + WebSocket 接続
+  // setTimeout(fn, 0) で接続を遅延させることで React StrictMode の
+  // 二重 Effect 実行時に "closed before established" エラーが出ないようにする。
+  // クリーンアップがタイマーより先に走った場合は接続自体をキャンセルする。
   useEffect(() => {
-    const ydoc = new Y.Doc();
-    const yText = ydoc.getText("content");
-    ydocRef.current = ydoc;
-
-    const provider = new WebsocketProvider(WS_URL, `note-${noteId}`, ydoc);
-    providerRef.current = provider;
-
-    const color = getUserColor(currentUser.id);
-    const name = currentUser.name || currentUser.email || "Anonymous";
-    provider.awareness.setLocalStateField("user", { name, color });
-
-    const updateUsers = () => {
-      const users: OnlineUser[] = [];
-      provider.awareness.getStates().forEach((state) => {
-        if (state.user) users.push(state.user as OnlineUser);
-      });
-      setOnlineUsers(users);
+    type Session = {
+      ydoc: Y.Doc;
+      provider: WebsocketProvider;
+      updateUsers: () => void;
+      syncTimeout: ReturnType<typeof setTimeout>;
     };
-    provider.awareness.on("change", updateUsers);
+    let session: Session | null = null;
 
-    // 一定時間内に sync しなければフォールバック
-    const timeout = setTimeout(() => {
-      setMode((prev) => (prev === "loading" ? "fallback" : prev));
-    }, SYNC_TIMEOUT_MS);
+    const connectTimer = setTimeout(() => {
+      const ydoc = new Y.Doc();
+      const yText = ydoc.getText("content");
+      ydocRef.current = ydoc;
 
-    provider.on("sync", (isSynced: boolean) => {
-      if (!isSynced) return;
-      clearTimeout(timeout);
+      const provider = new WebsocketProvider(WS_URL, `note-${noteId}`, ydoc);
+      providerRef.current = provider;
 
-      // サーバー側に内容がなければ initialContent で初期化
-      if (yText.length === 0 && initialContent) {
-        ydoc.transact(() => {
-          yText.insert(0, initialContent);
+      provider.awareness.setLocalStateField("user", {
+        name: currentUser.name || currentUser.email || "Anonymous",
+        color: getUserColor(currentUser.id),
+      });
+
+      const updateUsers = () => {
+        const users: OnlineUser[] = [];
+        provider.awareness.getStates().forEach((state) => {
+          if (state.user) users.push(state.user as OnlineUser);
         });
-      }
+        setOnlineUsers(users);
+      };
+      provider.awareness.on("change", updateUsers);
 
-      setMode("ready");
-    });
+      const syncTimeout = setTimeout(() => {
+        setMode((prev) => (prev === "loading" ? "fallback" : prev));
+      }, SYNC_TIMEOUT_MS);
+
+      provider.on("sync", (isSynced: boolean) => {
+        if (!isSynced) return;
+        clearTimeout(syncTimeout);
+
+        if (yText.length === 0 && initialContent) {
+          ydoc.transact(() => {
+            yText.insert(0, initialContent);
+          });
+        }
+
+        setMode("ready");
+      });
+
+      session = { ydoc, provider, updateUsers, syncTimeout };
+    }, 0);
 
     return () => {
-      clearTimeout(timeout);
-      provider.awareness.off("change", updateUsers);
-      provider.destroy();
-      ydoc.destroy();
+      clearTimeout(connectTimer);
+      if (session) {
+        clearTimeout(session.syncTimeout);
+        session.provider.awareness.off("change", session.updateUsers);
+        session.provider.destroy();
+        session.ydoc.destroy();
+      }
       viewRef.current?.destroy();
       viewRef.current = null;
     };
@@ -121,7 +137,7 @@ export const CollaborativeEditor = forwardRef<
   useEffect(() => {
     if (mode !== "ready") return;
     if (!containerRef.current || !ydocRef.current || !providerRef.current) return;
-    if (viewRef.current) return; // 二重マウント防止
+    if (viewRef.current) return;
 
     const yText = ydocRef.current.getText("content");
     const undoManager = new Y.UndoManager(yText);
@@ -150,7 +166,7 @@ export const CollaborativeEditor = forwardRef<
           <textarea
             readOnly
             value={initialContent}
-            className="h-full min-h-[400px] w-full resize-none bg-transparent p-4 font-mono text-sm opacity-40"
+            className="min-h-[400px] w-full resize-none bg-transparent p-4 font-mono text-sm opacity-40"
           />
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="rounded-md bg-background/80 px-3 py-1.5 text-sm text-muted-foreground shadow">
@@ -180,7 +196,7 @@ export const CollaborativeEditor = forwardRef<
         </div>
       )}
 
-      {/* 協調編集モード: CodeMirror */}
+      {/* 協調編集モード: プレゼンスバー */}
       {mode === "ready" && onlineUsers.length > 0 && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>オンライン:</span>
@@ -199,6 +215,7 @@ export const CollaborativeEditor = forwardRef<
         </div>
       )}
 
+      {/* 協調編集モード: CodeMirror コンテナ */}
       <div
         ref={containerRef}
         className={
