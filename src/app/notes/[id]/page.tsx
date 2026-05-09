@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getNote } from "@/features/note/server/actions";
 import { getNoteShares } from "@/features/note/server/share-actions";
+import { checkNoteWriteAccess } from "@/features/note/services/ownership";
 import { NoteDetail } from "@/features/note/components/NoteDetail";
 
 interface NotePageProps {
@@ -23,11 +24,14 @@ export default async function NotePage({ params }: NotePageProps) {
   }
 
   const isOwner = result.data.authorId === session.user.id;
-  const shares = isOwner ? await getNoteShares(id) : [];
+  const [shares, canEdit] = await Promise.all([
+    isOwner ? getNoteShares(id) : Promise.resolve([]),
+    checkNoteWriteAccess(id, session.user.id),
+  ]);
 
   return (
     <div className="max-w-4xl">
-      <NoteDetail note={result.data} shares={shares} isOwner={isOwner} />
+      <NoteDetail note={result.data} shares={shares} isOwner={isOwner} canEdit={canEdit} />
     </div>
   );
 }

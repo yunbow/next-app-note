@@ -54,6 +54,7 @@ interface NoteDetailProps {
   note: NoteDetailNote;
   shares?: NoteShare[];
   isOwner?: boolean;
+  canEdit?: boolean;
 }
 
 interface NoteVersion {
@@ -67,7 +68,7 @@ interface NoteVersion {
   } | null;
 }
 
-export function NoteDetail({ note, shares = [], isOwner = false }: NoteDetailProps) {
+export function NoteDetail({ note, shares = [], isOwner = false, canEdit = false }: NoteDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
@@ -139,12 +140,14 @@ export function NoteDetail({ note, shares = [], isOwner = false }: NoteDetailPro
           </Button>
         </Link>
         <div className="flex gap-2">
-          <Link href={`/notes/${note.id}/edit`}>
-            <Button variant="outline">
-              <Edit className="mr-2 h-4 w-4" />
-              編集
-            </Button>
-          </Link>
+          {canEdit && (
+            <Link href={`/notes/${note.id}/edit`}>
+              <Button variant="outline">
+                <Edit className="mr-2 h-4 w-4" />
+                編集
+              </Button>
+            </Link>
+          )}
           {isOwner && (
             <Button variant="outline" onClick={() => setShowShare(true)}>
               <Share2 className="mr-2 h-4 w-4" />
