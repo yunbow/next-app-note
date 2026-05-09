@@ -31,6 +31,45 @@ export async function verifyTemplateOwnership(templateId: string, userId: string
   }
 }
 
+/**
+ * オーナー または edit 権限付き共有を持つユーザーのみ通過。
+ * 権限がなければ AuthorizationError を throw。
+ */
+export async function verifyNoteWriteAccess(noteId: string, userId: string): Promise<void> {
+  const note = await prisma.note.findUnique({
+    where: { id: noteId },
+    select: { authorId: true },
+  });
+
+  if (!note) throw new NotFoundError("ノート");
+  if (note.authorId === userId) return;
+
+  const editShare = await prisma.noteShare.findFirst({
+    where: {
+      noteId,
+      userId,
+      permission: "edit",
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+  });
+
+  if (!editShare) {
+    throw new AuthorizationError("このノートを編集する権限がありません");
+  }
+}
+
+/**
+ * ユーザーが note に対して書き込み権限を持つかを boolean で返す（throw しない）。
+ */
+export async function checkNoteWriteAccess(noteId: string, userId: string): Promise<boolean> {
+  try {
+    await verifyNoteWriteAccess(noteId, userId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function verifyNoteShareAccess(
   shareId: string,
   userId?: string,

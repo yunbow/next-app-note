@@ -23,7 +23,7 @@ import {
   AuthenticationError,
   isAppError,
 } from "@/lib/errors";
-import { verifyNoteOwnership } from "@/features/note/services/ownership";
+import { verifyNoteOwnership, verifyNoteWriteAccess } from "@/features/note/services/ownership";
 import { createLogger, logError, logSuccess } from "@/lib/logger/index";
 import { getUserPlan, getPlanLimits } from "@/lib/stripe/feature-gate";
 
@@ -143,8 +143,8 @@ export async function updateNote(
 
     const validated = updateNoteSchema.parse(input);
 
-    // IDOR対策: 権限チェック
-    await verifyNoteOwnership(validated.id, session.user.id);
+    // オーナーまたは edit 共有ユーザーを許可
+    await verifyNoteWriteAccess(validated.id, session.user.id);
 
     const note = await prisma.note.update({
       where: { id: validated.id },
@@ -332,9 +332,18 @@ export async function getNote(noteId: string) {
       return { success: false, error: "ノートが見つかりません" };
     }
 
-    // 権限チェック
+    // 権限チェック: オーナーでなく private の場合は共有があるか確認
     if (note.authorId !== session.user.id && note.visibility === "private") {
-      return { success: false, error: "権限がありません" };
+      const hasShare = await prisma.noteShare.findFirst({
+        where: {
+          noteId,
+          userId: session.user.id,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+      });
+      if (!hasShare) {
+        return { success: false, error: "権限がありません" };
+      }
     }
 
     return { success: true, data: note };

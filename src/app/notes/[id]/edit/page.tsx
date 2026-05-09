@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getNote } from "@/features/note/server/actions";
+import { checkNoteWriteAccess } from "@/features/note/services/ownership";
 import { NoteEditForm } from "@/features/note/components/NoteEditForm";
 
 interface EditNotePageProps {
@@ -11,7 +12,7 @@ export default async function EditNotePage({ params }: EditNotePageProps) {
   const session = await auth();
   const { id } = await params;
 
-  if (!session) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
@@ -19,6 +20,11 @@ export default async function EditNotePage({ params }: EditNotePageProps) {
 
   if (!result.success || !result.data) {
     redirect("/notes");
+  }
+
+  const canEdit = await checkNoteWriteAccess(id, session.user.id);
+  if (!canEdit) {
+    redirect(`/notes/${id}`);
   }
 
   return (
