@@ -96,6 +96,51 @@ export async function createNoteShare(
   }
 }
 
+export async function getNoteShares(noteId: string) {
+  try {
+    const session = await getSession();
+    if (!session?.user?.id) return [];
+
+    const note = await prisma.note.findUnique({
+      where: { id: noteId },
+      select: { authorId: true },
+    });
+    if (!note || note.authorId !== session.user.id) return [];
+
+    return prisma.noteShare.findMany({
+      where: { noteId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch (error) {
+    logger.error({ error, noteId }, "Failed to get note shares");
+    return [];
+  }
+}
+
+export async function findUserByEmail(
+  email: string,
+): Promise<ActionResult<{ id: string; name: string | null; email: string }>> {
+  try {
+    const session = await getSession();
+    if (!session?.user?.id) return { success: false, error: "認証が必要です" };
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, name: true, email: true },
+    });
+    if (!user) return { success: false, error: "ユーザーが見つかりません" };
+    if (user.id === session.user.id) return { success: false, error: "自分自身は共有対象にできません" };
+
+    return { success: true, data: user };
+  } catch (error) {
+    logger.error({ error, email }, "Failed to find user by email");
+    return { success: false, error: "ユーザーの検索に失敗しました" };
+  }
+}
+
 export async function deleteNoteShare(id: string): Promise<ActionResult> {
   try {
     const session = await getSession();

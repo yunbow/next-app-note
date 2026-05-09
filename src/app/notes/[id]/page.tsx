@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getNote } from "@/features/note/server/actions";
+import { getNoteShares } from "@/features/note/server/share-actions";
 import { NoteDetail } from "@/features/note/components/NoteDetail";
 
 interface NotePageProps {
@@ -11,7 +12,7 @@ export default async function NotePage({ params }: NotePageProps) {
   const session = await auth();
   const { id } = await params;
 
-  if (!session) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
 
@@ -21,9 +22,12 @@ export default async function NotePage({ params }: NotePageProps) {
     redirect("/notes");
   }
 
+  const isOwner = result.data.authorId === session.user.id;
+  const shares = isOwner ? await getNoteShares(id) : [];
+
   return (
     <div className="max-w-4xl">
-      <NoteDetail note={result.data} />
+      <NoteDetail note={result.data} shares={shares} isOwner={isOwner} />
     </div>
   );
 }

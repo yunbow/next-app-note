@@ -20,6 +20,8 @@ import { deleteNote } from "../server/actions";
 import { restoreNoteVersion } from "../server/version-actions";
 import { NoteLinks } from "./NoteLinks";
 import { VersionDiff } from "./VersionDiff";
+import { NoteShareManager } from "./NoteShareManager";
+import type { getNoteShares } from "../server/share-actions";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -46,8 +48,12 @@ interface NoteDetailNote {
   versions?: NoteVersion[];
 }
 
+type NoteShare = Awaited<ReturnType<typeof getNoteShares>>[number];
+
 interface NoteDetailProps {
   note: NoteDetailNote;
+  shares?: NoteShare[];
+  isOwner?: boolean;
 }
 
 interface NoteVersion {
@@ -61,13 +67,14 @@ interface NoteVersion {
   } | null;
 }
 
-export function NoteDetail({ note }: NoteDetailProps) {
+export function NoteDetail({ note, shares = [], isOwner = false }: NoteDetailProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
   const [previewVersion, setPreviewVersion] = useState<NoteVersion | null>(null);
   const [confirmRestore, setConfirmRestore] = useState<NoteVersion | null>(null);
   const [diffVersion, setDiffVersion] = useState<NoteVersion | null>(null);
+  const [showShare, setShowShare] = useState(false);
 
   const handleRestore = async (version: NoteVersion) => {
     setIsRestoring(version.id);
@@ -138,10 +145,12 @@ export function NoteDetail({ note }: NoteDetailProps) {
               編集
             </Button>
           </Link>
-          <Button variant="outline">
-            <Share2 className="mr-2 h-4 w-4" />
-            共有
-          </Button>
+          {isOwner && (
+            <Button variant="outline" onClick={() => setShowShare(true)}>
+              <Share2 className="mr-2 h-4 w-4" />
+              共有
+            </Button>
+          )}
           <Button
             variant="destructive"
             onClick={handleDelete}
@@ -428,6 +437,22 @@ export function NoteDetail({ note }: NoteDetailProps) {
               {isRestoring ? "復元中..." : "復元する"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Management Dialog */}
+      <Dialog open={showShare} onOpenChange={setShowShare}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="h-4 w-4" />
+              共有設定
+            </DialogTitle>
+            <DialogDescription>
+              このノートを他のユーザーと共有します
+            </DialogDescription>
+          </DialogHeader>
+          <NoteShareManager noteId={note.id} initialShares={shares} />
         </DialogContent>
       </Dialog>
     </div>
