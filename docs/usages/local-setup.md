@@ -1,17 +1,17 @@
 # ローカル環境構築手順
 
-Next.js + Prisma + PostgreSQL + MinIO 構成のメモアプリをローカルで動かすための手順です。
+Next.js + Prisma + PostgreSQL + MinIO + Hocuspocus 構成のメモアプリをローカルで動かすための手順です。
 
 ---
 
 ## 前提条件
 
-| ツール | 推奨バージョン | 備考 |
-| --- | --- | --- |
-| Node.js | 22.x | `Dockerfile` で `node:22-alpine` を使用 |
-| npm | 10.x 以上 | Node.js 22 同梱版で OK |
-| Docker Desktop | 最新版 | PostgreSQL / MinIO コンテナに使用 |
-| Git | 任意 | サブモジュールを含むため `--recursive` で clone |
+| ツール         | 推奨バージョン | 備考                                                   |
+| -------------- | -------------- | ------------------------------------------------------ |
+| Node.js        | 22.x           | `Dockerfile` で `node:22-alpine` を使用                |
+| npm            | 10.x 以上      | Node.js 22 同梱版で OK                                 |
+| Docker Desktop | 最新版         | PostgreSQL / MinIO / stripe-mock コンテナに使用        |
+| Git            | 任意           | サブモジュールを含むため `--recursive` で clone        |
 
 ---
 
@@ -54,12 +54,12 @@ docker compose ps
 
 `STATUS` が `Up (healthy)` になるまで数秒待ちます。`minio-init` コンテナが自動で `app-note` バケットを作成します。
 
-| サービス | ホストポート | 用途 |
-| --- | --- | --- |
-| PostgreSQL | 54332 | アプリの DB |
-| MinIO S3 API | 9002 | 画像アップロード先 |
-| MinIO コンソール | 9003 | ストレージ管理 UI |
-| stripe-mock | 12111 | Stripe API モック |
+| サービス         | ホストポート | 用途                   |
+| ---------------- | ------------ | ---------------------- |
+| PostgreSQL       | 54332        | アプリの DB            |
+| MinIO S3 API     | 9002         | 画像アップロード先     |
+| MinIO コンソール | 9003         | ストレージ管理 UI      |
+| stripe-mock      | 12111        | Stripe API モック      |
 
 ### 4. 環境変数の設定
 
@@ -69,42 +69,61 @@ cp .env.example .env
 
 **必須項目:**
 
-| キー | ローカル設定例 | 用途 |
-| --- | --- | --- |
-| `DATABASE_URL` | `postgresql://app:app@localhost:54332/app?schema=public` | DB 接続文字列 |
-| `AUTH_SECRET` | `openssl rand -base64 48` で生成 | セッション暗号化キー（32 文字以上） |
-| `AUTH_URL` | `http://localhost:3000` | アプリのベース URL |
+| キー           | ローカル設定例                                        | 用途                               |
+| -------------- | ----------------------------------------------------- | ---------------------------------- |
+| `DATABASE_URL` | `postgresql://app:app@localhost:54332/app?schema=public` | DB 接続文字列                   |
+| `AUTH_SECRET`  | `openssl rand -base64 48` で生成                      | セッション暗号化キー（32 文字以上） |
+| `AUTH_URL`     | `http://localhost:3000`                               | アプリのベース URL                 |
 
-**ストレージ（R2 / MinIO）:**
-
-| キー | ローカル設定例 | 用途 |
-| --- | --- | --- |
-| `R2_ACCESS_KEY_ID` | `minioadmin` | MinIO ルートユーザー |
-| `R2_SECRET_ACCESS_KEY` | `minioadmin` | MinIO ルートパスワード |
-| `R2_BUCKET_NAME` | `app-note` | バケット名 |
-| `R2_ENDPOINT` | `http://localhost:9002` | MinIO エンドポイント |
-| `R2_PUBLIC_URL` | `http://localhost:9002/app-note` | 画像の公開 URL プレフィックス |
-
-**Stripe（stripe-mock）:**
-
-`.env.example` にモック用のデフォルト値が記載されています。`cp .env.example .env` 後はそのまま動作します。
-
-| キー | ローカル設定例 | 用途 |
-| --- | --- | --- |
-| `STRIPE_SECRET_KEY` | `sk_test_mock_local` | モック API キー（任意の `sk_test_*` 値で可） |
-| `STRIPE_WEBHOOK_SECRET` | `whsec_mock_local_...` | ローカル用プレースホルダー |
-| `STRIPE_BASIC_PRICE_ID` | `price_mock_basic` | Basic プランの Price ID |
-| `STRIPE_PREMIUM_PRICE_ID` | `price_mock_premium` | Premium プランの Price ID |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | `pk_test_mock_local` | 公開キー（任意の `pk_test_*` 値で可） |
-| `STRIPE_MOCK_URL` | `http://localhost:12111` | stripe-mock エンドポイント（本番では削除） |
-
-OAuth / SMTP は使う機能のみ設定すれば OK です（未設定でも起動します）。
+> **注意:** Auth.js v5 の環境変数名は `AUTH_SECRET` / `AUTH_URL` です（旧 NextAuth の `NEXTAUTH_SECRET` / `NEXTAUTH_URL` とは異なります）。
 
 `AUTH_SECRET` の生成:
 
 ```bash
 openssl rand -base64 48
 ```
+
+**リアルタイム共同編集（Y.js WebSocket）:**
+
+`.env.example` にデフォルト値が記載されています。`cp .env.example .env` 後はそのまま動作します。
+
+| キー                   | デフォルト             | 用途                                                   |
+| ---------------------- | ---------------------- | ------------------------------------------------------ |
+| `NEXT_PUBLIC_WS_URL`   | `ws://localhost:1234`  | クライアントが接続する WebSocket サーバー URL          |
+| `WS_PORT`              | `1234`                 | Hocuspocus サーバーのリスニングポート                  |
+
+**任意項目（ログ）:**
+
+| キー        | デフォルト | 用途                                           |
+| ----------- | ---------- | ---------------------------------------------- |
+| `LOG_LEVEL` | `info`     | サーバーログの詳細度（`debug` / `info` / `warn` / `error`） |
+
+**ストレージ（R2 / MinIO）:**
+
+`.env.example` にローカル用のデフォルト値が記載されています。`cp .env.example .env` 後はそのまま動作します。
+
+| キー                   | ローカル設定例                  | 用途                      |
+| ---------------------- | ------------------------------- | ------------------------- |
+| `R2_ACCESS_KEY_ID`     | `minioadmin`                    | MinIO ルートユーザー      |
+| `R2_SECRET_ACCESS_KEY` | `minioadmin`                    | MinIO ルートパスワード    |
+| `R2_BUCKET_NAME`       | `app-note`                      | バケット名                |
+| `R2_ENDPOINT`          | `http://localhost:9002`         | MinIO エンドポイント      |
+| `R2_PUBLIC_URL`        | `http://localhost:9002/app-note` | 画像の公開 URL プレフィックス |
+
+**Stripe（stripe-mock）:**
+
+`.env.example` にモック用のデフォルト値が記載されています。`cp .env.example .env` 後はそのまま動作します。
+
+| キー                                | ローカル設定例              | 用途                                          |
+| ----------------------------------- | --------------------------- | --------------------------------------------- |
+| `STRIPE_SECRET_KEY`                 | `sk_test_mock_local`        | モック API キー（任意の `sk_test_*` 値で可）  |
+| `STRIPE_WEBHOOK_SECRET`             | `whsec_mock_local_...`      | ローカル用プレースホルダー                    |
+| `STRIPE_BASIC_PRICE_ID`             | `price_mock_basic`          | Basic プランの Price ID                       |
+| `STRIPE_PREMIUM_PRICE_ID`           | `price_mock_premium`        | Premium プランの Price ID                     |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`| `pk_test_mock_local`        | 公開キー（任意の `pk_test_*` 値で可）         |
+| `STRIPE_MOCK_URL`                   | `http://localhost:12111`    | stripe-mock エンドポイント（本番では削除）    |
+
+OAuth / SMTP は使う機能のみ設定すれば OK です（未設定でも起動します）。
 
 ### 5. DB マイグレーション
 
@@ -114,15 +133,41 @@ npm run db:migrate:dev
 
 ### 6. 開発サーバーの起動
 
+#### 通常起動（リアルタイム共同編集なし）
+
 ```bash
 npm run dev
 ```
 
+#### リアルタイム共同編集あり（推奨）
+
+Next.js と Y.js WebSocket サーバー（Hocuspocus）を同時起動します。
+
+```bash
+npm run dev:collab
+```
+
+| サーバー                  | URL                       |
+| ------------------------- | ------------------------- |
+| Next.js アプリ            | http://localhost:3000     |
+| Hocuspocus WebSocket      | ws://localhost:1234       |
+
 [http://localhost:3000](http://localhost:3000) を開いて動作確認します。
+
+> **WebSocket サーバーを起動しない場合:** `/notes/[id]/edit` を開くと CodeMirror エディタは表示されますが、WS 接続が失敗します。`onStoreDocument` による自動保存は行われないため、「保存」ボタンで手動保存してください。
 
 ---
 
 ## 主要コマンド
+
+### 型チェック / Lint / Format
+
+```bash
+npm run type-check       # TypeScript 型チェック（tsc --noEmit）
+npm run lint             # ESLint
+npm run format           # Prettier（書き込み）
+npm run format:check     # Prettier（チェックのみ）
+```
 
 ### テスト
 
@@ -131,7 +176,10 @@ npm run dev
 npm test
 
 # 1 回実行
-npm run test:run
+npm run test:run         # または npm run test:unit
+
+# integration テストのみ
+npm run test:integration
 
 # カバレッジ
 npm run test:coverage
@@ -151,12 +199,11 @@ npm run test:e2e:ui       # UI モード
 npm run test:e2e:debug    # デバッグ
 ```
 
-### Lint / Format
+### WebSocket サーバー
 
 ```bash
-npm run lint              # ESLint
-npm run format            # Prettier（書き込み）
-npm run format:check      # Prettier（チェックのみ）
+npm run ws:dev            # Hocuspocus を単独起動（tsx watch で自動再起動）
+npm run dev:collab        # Next.js + WebSocket サーバーを同時起動（concurrently）
 ```
 
 ### DB 操作
@@ -166,6 +213,7 @@ npm run db:migrate:dev    # マイグレーション適用（開発）
 npm run db:migrate:deploy # マイグレーション適用（本番 CI 用）
 npm run db:migrate:status # マイグレーション状態確認
 npm run db:seed:dev       # 開発用テストデータ投入
+npm run db:seed:prod      # マスタデータ（カテゴリ・タグ）のみ投入
 npm run prisma:studio     # Prisma Studio を http://localhost:5555 で起動
 ```
 
@@ -173,6 +221,12 @@ psql で直接操作:
 
 ```bash
 docker compose exec db psql -U app -d app
+```
+
+### 静的アセット
+
+```bash
+npm run upload:static     # ブランドロゴ等の静的画像を R2 / MinIO へアップロード
 ```
 
 ---
@@ -183,28 +237,28 @@ docker compose exec db psql -U app -d app
 
 ### ログインアカウント
 
-| ユーザー | メールアドレス | パスワード |
-| --- | --- | --- |
-| Alice | alice@example.com | `password123` |
-| Bob | bob@example.com | `password123` |
+| ユーザー | メールアドレス    | パスワード    | プラン  |
+| -------- | ----------------- | ------------- | ------- |
+| Alice    | alice@example.com | `password123` | Premium |
+| Bob      | bob@example.com   | `password123` | Free    |
 
 ### ノートデータ
 
-| ユーザー | タイトル | 公開設定 |
-| --- | --- | --- |
-| Alice | Next.js App Router の基礎 | public |
-| Alice | Prisma ORM メモ | private |
-| Alice | 今日の日記 | private |
-| Bob | React Hooks チートシート | public |
-| Bob | アイデアメモ: ダークモード対応 | private |
-| Bob | TypeScript Tips | shared |
+| ユーザー | タイトル                        | 公開設定 |
+| -------- | ------------------------------- | -------- |
+| Alice    | Next.js App Router の基礎       | public   |
+| Alice    | Prisma ORM メモ                 | private  |
+| Alice    | 今日の日記                      | private  |
+| Bob      | React Hooks チートシート        | public   |
+| Bob      | アイデアメモ: ダークモード対応  | private  |
+| Bob      | TypeScript Tips                 | shared   |
 
 ### SEED モード
 
-| コマンド | 内容 |
-| --- | --- |
-| `npm run db:seed:dev` | ユーザー・ノート・マスタデータを投入 |
-| `npm run db:seed:prod` | マスタデータ（カテゴリ・タグ）のみ投入 |
+| コマンド              | 内容                                       |
+| --------------------- | ------------------------------------------ |
+| `npm run db:seed:dev` | ユーザー・ノート・マスタデータを投入       |
+| `npm run db:seed:prod`| マスタデータ（カテゴリ・タグ）のみ投入    |
 
 > `NODE_ENV=production` かつ `SEED_MODE=dev` の組み合わせは起動時エラーになります（本番への誤投入防止）。
 
@@ -212,14 +266,14 @@ docker compose exec db psql -U app -d app
 
 ## Docker ライフサイクル
 
-| 操作 | コマンド | 備考 |
-| --- | --- | --- |
-| 起動 | `docker compose up -d` | |
-| 停止（データ保持） | `docker compose stop` | |
-| 再開 | `docker compose start` | |
-| 停止＋コンテナ削除 | `docker compose down` | ボリュームは残る |
-| **完全リセット** | `docker compose down -v` | ⚠ 全データ消失 |
-| ログ確認 | `docker compose logs -f` | |
+| 操作               | コマンド                  | 備考                   |
+| ------------------ | ------------------------- | ---------------------- |
+| 起動               | `docker compose up -d`    |                        |
+| 停止（データ保持） | `docker compose stop`     |                        |
+| 再開               | `docker compose start`    |                        |
+| 停止＋コンテナ削除 | `docker compose down`     | ボリュームは残る       |
+| **完全リセット**   | `docker compose down -v`  | ⚠ 全データ消失         |
+| ログ確認           | `docker compose logs -f`  |                        |
 
 DB を完全リセットして再構築する場合:
 
@@ -255,6 +309,33 @@ npm ci
 
 - `docker compose ps` で DB コンテナが `healthy` になっているか確認
 - `.env` の `DATABASE_URL` のポートが `54332` になっているか確認
+
+### 型エラーが大量に出る
+
+`.next/` 配下の生成ファイルが古い場合があります。一度削除して再ビルドしてください。
+
+```bash
+rm -rf .next
+npm run dev
+```
+
+### WebSocket サーバーに接続できない
+
+エディタ画面で「同期中...」が消えない、または共同編集が反映されない場合:
+
+1. `npm run ws:dev` または `npm run dev:collab` で Hocuspocus が起動しているか確認
+2. `.env` の `NEXT_PUBLIC_WS_URL` が `ws://localhost:1234` になっているか確認
+3. ポート 1234 が別プロセスに使用されていないか確認:
+
+```bash
+# Windows
+netstat -ano | findstr :1234
+
+# macOS / Linux
+lsof -i :1234
+```
+
+別ポートを使う場合は `.env` の `WS_PORT` と `NEXT_PUBLIC_WS_URL` を合わせて変更してください。
 
 ### 画像アップロードが 503 になる
 
