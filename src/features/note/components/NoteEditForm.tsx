@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Save, Tag, X } from "lucide-react";
+import { ArrowLeft, Save, Tag, X } from "lucide-react";
+import Link from "next/link";
 
 interface NoteEditFormProps {
   note: {
@@ -57,6 +58,13 @@ export function NoteEditForm({ note, currentUser }: NoteEditFormProps) {
 
   return (
     <div className="space-y-6">
+      <Link href={`/notes/${note.id}`}>
+        <Button variant="ghost">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          戻る
+        </Button>
+      </Link>
+
       <div className="rounded-lg border bg-white p-6 dark:bg-gray-800">
         {/* Title */}
         <div className="mb-4 space-y-2">
